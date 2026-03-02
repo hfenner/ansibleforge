@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: entitlement-sync
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  schedule: "0 4 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: entitlement-sync
+          restartPolicy: OnFailure
+          containers:
+          - name: sync
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              echo "Reading etc-pki-entitlement from openshift-config-managed..."
+              oc get secret etc-pki-entitlement \
+                -n openshift-config-managed \
+                -o json \
+                | python3 -c '
+              import json, sys
+              s = json.load(sys.stdin)
+              for key in ["namespace","uid","resourceVersion","creationTimestamp","ownerReferences","managedFields"]:
+                  s["metadata"].pop(key, None)
+              s["metadata"]["namespace"] = "{{ .Values.namespace }}"
+              json.dump(s, sys.stdout)
+              ' | oc apply -n {{ .Values.namespace }} --server-side -f -
+
+              echo "etc-pki-entitlement synced to {{ .Values.namespace }}"

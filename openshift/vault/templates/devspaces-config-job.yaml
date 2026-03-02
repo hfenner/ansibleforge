@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-config
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 180
+  template:
+    spec:
+      serviceAccountName: vault-unseal
+      restartPolicy: Never
+      containers:
+        - name: vault-config
+          image: hashicorp/vault:1.18.1
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+
+              VAULT_ADDR="http://vault.{{ .Values.namespace }}.svc:8200"
+              SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              API="https://kubernetes.default.svc"
+              CACERT="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+              NS="{{ .Values.namespace }}"
+
+              # Get root token from secret
+              ROOT_TOKEN=$(curl -sf --cacert "${CACERT}" \
+                -H "Authorization: Bearer ${SA_TOKEN}" \
+                "${API}/api/v1/namespaces/${NS}/secrets/vault-unseal-keys" \
+                | grep '"root-token"' \
+                | grep -o '"[A-Za-z0-9._-]*"$' \
+                | tr -d '"' \
+                | base64 -d)
+
+              export VAULT_ADDR VAULT_TOKEN="${ROOT_TOKEN}"
+
+              echo "=== Vault engine and auth setup ==="
+
+              # Enable KV v2 secrets engine (idempotent)
+              vault secrets list -format=json | grep -q '"secret/"' \
+                && echo "KV v2 already enabled" \
+                || vault secrets enable -path=secret kv-v2
+
+              # Enable Kubernetes auth method (idempotent)
+              vault auth list -format=json | grep -q '"kubernetes/"' \
+                && echo "Kubernetes auth already enabled" \
+                || vault auth enable kubernetes
+
+              # Configure Kubernetes auth
+              # No token_reviewer_jwt needed: the vault SA has system:auth-delegator
+              # so Vault uses its own pod token for TokenReview calls
+              vault write auth/kubernetes/config \
+                kubernetes_host="https://kubernetes.default.svc" \
+                kubernetes_ca_cert=@"${CACERT}"
+
+              echo "=== ESO policy and role ==="
+
+              vault policy write external-secrets - <<'POLICY'
+              path "secret/data/*" {
+                capabilities = ["read"]
+              }
+              path "secret/metadata/*" {
+                capabilities = ["read", "list"]
+              }
+              POLICY
+
+              vault write auth/kubernetes/role/external-secrets \
+                bound_service_account_names="cluster-external-secrets" \
+                bound_service_account_namespaces="external-secrets" \
+                policies="external-secrets" \
+                ttl="1h"
+
+              echo "=== DevSpaces policy and role ==="
+
+              vault policy write devspaces-user - <<'POLICY'
+              path "secret/data/*" {
+                capabilities = ["read"]
+              }
+              path "secret/metadata/*" {
+                capabilities = ["read", "list"]
+              }
+              POLICY
+
+              vault write auth/kubernetes/role/devspaces-user \
+                bound_service_account_names="*" \
+                bound_service_account_namespaces="*" \
+                policies="devspaces-user" \
+                ttl="1h"
+
+              echo "=== Vault configuration complete ==="
+              echo "KV engine:"
+              vault secrets list | grep secret
+              echo "Auth roles:"
+              vault read auth/kubernetes/role/external-secrets
+              vault read auth/kubernetes/role/devspaces-user

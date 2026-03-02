@@ -1,0 +1,4 @@
+username: ""  # overridden by ApplicationSet
+vaultAddr: http://vault.vault.svc:8200
+buildsNamespace: shared-builds
+gitPath: https://github.com/hfenner

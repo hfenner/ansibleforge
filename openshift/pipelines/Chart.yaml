@@ -1,0 +1,4 @@
+apiVersion: v2
+name: pipelines
+version: 0.1.0
+description: OpenShift Pipelines operator subscription

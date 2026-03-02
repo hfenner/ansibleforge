@@ -1,0 +1,50 @@
+apiVersion: workspace.devfile.io/v1alpha2
+kind: DevWorkspace
+metadata:
+  name: product-demos
+  namespace: {{ .Values.username }}-devspaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  started: true
+  routingClass: che
+  template:
+    attributes:
+      pod-overrides:
+        metadata:
+          annotations:
+            vault.hashicorp.com/agent-inject: "true"
+            vault.hashicorp.com/role: "devspaces-user"
+            vault.hashicorp.com/agent-inject-secret-ansible: "secret/data/ansible"
+            vault.hashicorp.com/agent-inject-secret-quay: "secret/data/quay"
+    components:
+      - name: development-container
+        container:
+          image: image-registry.openshift-image-registry.svc:5000/{{ .Values.buildsNamespace }}/ansible-devspaces:latest
+          memoryRequest: 256M
+          memoryLimit: 5Gi
+          cpuRequest: 250m
+          cpuLimit: 2000m
+          args: ['tail', '-f', '/dev/null']
+          envFrom:
+            - configMapRef:
+                name: workspace-env
+      - name: ee-dragonslair
+        container:
+          image: image-registry.openshift-image-registry.svc:5000/{{ .Values.buildsNamespace }}/ee-dragonslair:latest
+          memoryRequest: 256M
+          memoryLimit: 5Gi
+          cpuRequest: 250m
+          cpuLimit: 2000m
+          args: ['tail', '-f', '/dev/null']
+          envFrom:
+            - configMapRef:
+                name: workspace-env
+    projects:
+      - name: product-demos
+        git:
+          remotes:
+            origin: {{ .Values.gitPath }}/product-demos.git
+          checkoutFrom:
+            revision: main
+          clonePath: product-demos

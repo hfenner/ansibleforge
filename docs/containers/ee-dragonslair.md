@@ -1,0 +1,43 @@
+# ee-dragonslair
+
+**Source:** `containers/ee-dragonslair/`
+**Base:** `registry.redhat.io/ansible-automation-platform-26/ee-minimal-rhel9:latest`
+**Used by:** Ansible Automation Platform job execution
+
+## Overview
+
+`ee-dragonslair` is a custom Ansible Execution Environment (EE) built on the AAP 2.6 minimal RHEL 9 base image.
+It extends the base with the same collection set used in the developer workspace, plus Terraform and OpenShift client tools, so automation written in the DevSpaces workspace runs identically in AAP.
+
+## Build process
+
+EEs are built using `ansible-builder`. The `execution-environment.yaml` defines dependencies; `ansible-builder create` generates the build context in `context/` before the OpenShift BuildConfig runs.
+
+```bash
+# Generate build context (run locally or via Tekton pipeline)
+cd containers/ee-dragonslair
+ansible-builder create
+
+# Build in OpenShift (via shared-builds BuildConfig)
+oc start-build ee-dragonslair -n shared-builds --follow
+```
+
+## System dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `terraform` | Infrastructure as Code execution |
+| `gcc` / `gcc-c++` / `python3-devel` | Python package compilation |
+| `openldap-devel` | LDAP integration |
+| `systemd-devel` | Systemd interaction |
+| `python3-pip` / `python3-setuptools` | Python package management |
+
+OpenShift client tools (`oc`, `kubectl`) are enabled via the `rhocp-4.19` repo during the build.
+
+## Ansible collections
+
+The EE includes the same comprehensive collection set as the `ansible-devspaces` container, covering AAP management, cloud providers, OpenShift, Windows, satellite, and more. See the [ansible-devspaces collections list](ansible-devspaces.md#ansible-collections) for the full set.
+
+## Parity with ansible-devspaces
+
+Both images share the same `requirements.yaml` (collections) and `requirements.txt` (Python packages), ensuring that automation developed in a DevSpaces workspace behaves identically when run by AAP using this EE.

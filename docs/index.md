@@ -24,19 +24,59 @@ It combines purpose-built developer containers, a custom Execution Environment, 
 
 ## Architecture
 
-```
-ansible-devspaces (bootstrap trigger)
-└── ArgoCD app-of-apps
-    └── openshift/bootstrap/
-        ├── vault              Auto-init, unseal, KV, Kubernetes auth
-        ├── external-secrets   ClusterSecretStores: Vault + AWS
-        ├── shared-builds      BuildConfigs for dev images
-        ├── devspaces          CheCluster + SCC
-        ├── pipelines          Tekton operator
-        ├── gitlab             Source control
-        ├── keycloak           Identity provider
-        ├── aap                Ansible Automation Platform
-        └── user-projects      ApplicationSet → per-user namespaces + workspaces
+```mermaid
+flowchart TB
+    subgraph gitops["GitOps — ArgoCD"]
+        bootstrap["Bootstrap\napp-of-apps"]
+    end
+
+    subgraph platform["Platform Services"]
+        vault["🔐 HashiCorp Vault"]
+        eso["🔑 External Secrets"]
+        builds["🏗️ Shared Builds"]
+        pipelines["⚙️ OpenShift Pipelines"]
+    end
+
+    subgraph apps["Applications"]
+        devspaces["💻 DevSpaces"]
+        gitlab["🦊 GitLab"]
+        keycloak["🔓 Keycloak"]
+        aap["⚡ AAP"]
+    end
+
+    subgraph images["Container Images"]
+        devimg["ansible-devspaces\nDev Container"]
+        eeimg["ee-dragonslair\nExecution Environment"]
+    end
+
+    subgraph peruser["Per-User Namespace — ApplicationSet"]
+        workspace["DevWorkspace\nauto-started"]
+        secrets["Secrets\nansible-config · quay-registry-secret"]
+        configmap["workspace-env ConfigMap\nVAULT_ADDR"]
+    end
+
+    bootstrap --> vault
+    bootstrap --> eso
+    bootstrap --> builds
+    bootstrap --> pipelines
+    bootstrap --> devspaces
+    bootstrap --> gitlab
+    bootstrap --> keycloak
+    bootstrap --> aap
+    bootstrap -->|"one app per user"| peruser
+
+    vault -->|"Kubernetes auth"| eso
+    vault -->|"agent sidecar"| workspace
+    eso -->|"sync secrets"| secrets
+
+    builds -->|"build & publish"| devimg
+    builds -->|"build & publish"| eeimg
+    devimg -->|"workspace container"| workspace
+    eeimg -->|"workspace container"| workspace
+    eeimg -->|"job execution"| aap
+
+    keycloak -->|"SSO"| gitlab
+    devspaces -->|"manages"| workspace
 ```
 
 ## Repository layout

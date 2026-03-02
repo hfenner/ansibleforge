@@ -1,6 +1,6 @@
 # External Secrets Operator
 
-**Chart:** `openshift/external-secrets/`
+**Chart:** `ocp/external-secrets/`
 **Namespace:** `external-secrets`
 
 ## Overview

@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/hfenner/ansibleforge.git
     targetRevision: main
-    path: openshift/gitops/noobaa-tuning
+    path: ocp/gitops/noobaa-tuning
   destination:
     server: https://kubernetes.default.svc
     namespace: openshift-storage

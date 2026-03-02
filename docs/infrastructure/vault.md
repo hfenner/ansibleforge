@@ -1,6 +1,6 @@
 # HashiCorp Vault
 
-**Chart:** `openshift/vault/` (wraps the official HashiCorp Helm chart)
+**Chart:** `ocp/vault/` (wraps the official HashiCorp Helm chart)
 **Namespace:** `vault`
 
 ## Overview

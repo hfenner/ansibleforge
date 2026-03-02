@@ -1,6 +1,6 @@
 # Ansible Automation Platform
 
-**Chart:** `openshift/aap/`
+**Chart:** `ocp/aap/`
 **Namespace:** `aap`
 
 ## Overview
@@ -25,7 +25,7 @@ This ensures automation runs with the same collections and tools available in th
 
 ## Configuration
 
-Update `openshift/aap/values.yaml` with your cluster domain:
+Update `ocp/aap/values.yaml` with your cluster domain:
 
 ```yaml
 domain: apps.<cluster-domain>

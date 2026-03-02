@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/hfenner/ansibleforge.git
     targetRevision: main
-    path: openshift/gitops/shared-builds
+    path: ocp/gitops/shared-builds
   destination:
     server: https://kubernetes.default.svc
   ignoreDifferences:

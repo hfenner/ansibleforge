@@ -8,7 +8,7 @@
 
 ## 1. Fork and configure
 
-Fork `hfenner/ansibleforge` and update `openshift/user-projects/values.yaml` with your OpenShift usernames and your fork URL:
+Fork `hfenner/ansibleforge` and update `ocp/user-projects/values.yaml` with your OpenShift usernames and your fork URL:
 
 ```yaml
 users:
@@ -34,7 +34,7 @@ spec:
   source:
     repoURL: https://github.com/<your-fork>/ansibleforge.git
     targetRevision: main
-    path: openshift/bootstrap
+    path: ocp/bootstrap
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:

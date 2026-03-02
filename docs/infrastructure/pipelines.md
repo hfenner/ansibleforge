@@ -1,6 +1,6 @@
 # OpenShift Pipelines
 
-**Chart:** `openshift/pipelines/`
+**Chart:** `ocp/pipelines/`
 **Namespace:** `openshift-operators` (cluster-scoped)
 
 ## Overview

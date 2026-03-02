@@ -1,6 +1,6 @@
 # GitLab
 
-**Chart:** `openshift/gitlab/`
+**Chart:** `ocp/gitlab/`
 **Namespace:** `gitlab`
 
 ## Overview
@@ -20,7 +20,7 @@ GitLab is configured to authenticate via Keycloak OpenID Connect. The OAuth clie
 
 ## Configuration
 
-Update `openshift/gitlab/values.yaml` with your cluster domain:
+Update `ocp/gitlab/values.yaml` with your cluster domain:
 
 ```yaml
 domain: apps.<cluster-domain>

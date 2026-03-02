@@ -1,6 +1,6 @@
 # Infrastructure
 
-All infrastructure components are Helm charts under `openshift/` managed by ArgoCD.
+All infrastructure components are Helm charts under `ocp/` managed by ArgoCD.
 A single bootstrap Application deploys everything via the app-of-apps pattern.
 
 | Component | Namespace | Purpose |

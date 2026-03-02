@@ -1,6 +1,6 @@
 # Shared Builds
 
-**Chart:** `openshift/shared-builds/`
+**Chart:** `ocp/shared-builds/`
 **Namespace:** `shared-builds`
 
 ## Overview

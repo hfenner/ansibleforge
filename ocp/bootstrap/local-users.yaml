@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: user-projects
+  name: local-users
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "2"
@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/hfenner/ansibleforge.git
     targetRevision: main
-    path: openshift/gitops/user-projects
+    path: ocp/gitops/local-users
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:

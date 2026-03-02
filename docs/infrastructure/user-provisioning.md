@@ -1,6 +1,6 @@
 # User Provisioning
 
-**Charts:** `openshift/user-projects/`, `openshift/user-devspace/`
+**Charts:** `ocp/user-projects/`, `ocp/user-devspace/`
 
 ## Overview
 
@@ -8,7 +8,7 @@ Adding a user to AnsibleForge is a one-line git change. An ArgoCD ApplicationSet
 
 ## Adding users
 
-Edit `openshift/user-projects/values.yaml`:
+Edit `ocp/user-projects/values.yaml`:
 
 ```yaml
 users:

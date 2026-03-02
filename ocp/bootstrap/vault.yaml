@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/hfenner/ansibleforge.git
     targetRevision: main
-    path: openshift/gitops/vault
+    path: ocp/gitops/vault
   destination:
     server: https://kubernetes.default.svc
     namespace: vault

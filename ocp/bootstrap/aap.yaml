@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: keycloak
+  name: aap-consolelink
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -10,19 +10,13 @@ spec:
   source:
     repoURL: https://github.com/hfenner/ansibleforge.git
     targetRevision: main
-    path: openshift/gitops/keycloak
+    path: ocp/gitops/aap
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
-    retry:
-      limit: 10
-      backoff:
-        duration: 30s
-        factor: 1
-        maxDuration: 5m
     syncOptions:
     - ServerSideApply=true
     - SkipDryRunOnMissingResource=true

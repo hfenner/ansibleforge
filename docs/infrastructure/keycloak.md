@@ -1,6 +1,6 @@
 # Keycloak
 
-**Chart:** `openshift/keycloak/`
+**Chart:** `ocp/keycloak/`
 **Namespace:** `keycloak`
 
 ## Overview
@@ -21,7 +21,7 @@ A `KeycloakRealmImport` resource pre-configures the realm with an OAuth client f
 
 ## Configuration
 
-Update `openshift/keycloak/values.yaml` with your cluster domain:
+Update `ocp/keycloak/values.yaml` with your cluster domain:
 
 ```yaml
 domain: apps.<cluster-domain>

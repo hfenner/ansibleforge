@@ -86,7 +86,7 @@ ansibleforge/
 ├── containers/
 │   ├── ansible-devspaces/   # Developer container image
 │   └── ee-dragonslair/      # Ansible Execution Environment
-└── openshift/
+└── ocp/
     ├── bootstrap/           # ArgoCD Application manifests (app-of-apps)
     ├── vault/               # HashiCorp Vault Helm chart
     ├── external-secrets/    # ESO operator + ClusterSecretStores

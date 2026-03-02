@@ -1,6 +1,6 @@
 # DevSpaces
 
-**Chart:** `openshift/devspaces/`
+**Chart:** `ocp/devspaces/`
 **Namespace:** `devspaces`
 
 ## Overview

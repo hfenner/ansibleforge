@@ -20,7 +20,7 @@ spec:
       source:
         repoURL: {{ .Values.repoURL }}
         targetRevision: {{ .Values.targetRevision }}
-        path: openshift/gitops/user-devspace
+        path: ocp/user-devspace
         helm:
           parameters:
             - name: username

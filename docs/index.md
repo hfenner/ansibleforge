@@ -76,11 +76,11 @@ flowchart LR
     keycloak -->|"SSO"| gitlab
     devspaces -->|"manages"| workspace
 
-    classDef gitopsStyle fill:#e65100,color:#fff,stroke:#bf360c
-    classDef platformStyle fill:#1565c0,color:#fff,stroke:#0d47a1
-    classDef appsStyle fill:#2e7d32,color:#fff,stroke:#1b5e20
-    classDef imageStyle fill:#6a1b9a,color:#fff,stroke:#4a148c
-    classDef userStyle fill:#00695c,color:#fff,stroke:#004d40
+    classDef gitopsStyle fill:#e65100,color:#fff,stroke:#bf360c,font-size:15px,font-weight:bold
+    classDef platformStyle fill:#1565c0,color:#fff,stroke:#0d47a1,font-size:15px,font-weight:bold
+    classDef appsStyle fill:#2e7d32,color:#fff,stroke:#1b5e20,font-size:15px,font-weight:bold
+    classDef imageStyle fill:#6a1b9a,color:#fff,stroke:#4a148c,font-size:15px,font-weight:bold
+    classDef userStyle fill:#00695c,color:#fff,stroke:#004d40,font-size:15px,font-weight:bold
 
     class bootstrap gitopsStyle
     class vault,eso,builds,pipelines platformStyle

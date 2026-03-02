@@ -25,44 +25,42 @@ It combines purpose-built developer containers, a custom Execution Environment, 
 ## Architecture
 
 ```mermaid
-flowchart TB
-    subgraph gitops["GitOps — ArgoCD"]
+flowchart LR
+    subgraph gitops["🔄 GitOps — ArgoCD"]
         bootstrap["Bootstrap\napp-of-apps"]
     end
 
     subgraph platform["Platform Services"]
-        vault["🔐 HashiCorp Vault"]
+        direction TB
+        vault["🔐 Vault"]
         eso["🔑 External Secrets"]
         builds["🏗️ Shared Builds"]
-        pipelines["⚙️ OpenShift Pipelines"]
+        pipelines["⚙️ Pipelines"]
     end
 
     subgraph apps["Applications"]
+        direction TB
         devspaces["💻 DevSpaces"]
-        gitlab["🦊 GitLab"]
         keycloak["🔓 Keycloak"]
+        gitlab["🦊 GitLab"]
         aap["⚡ AAP"]
     end
 
     subgraph images["Container Images"]
-        devimg["ansible-devspaces\nDev Container"]
-        eeimg["ee-dragonslair\nExecution Environment"]
+        direction TB
+        devimg["ansible-devspaces\ndev container"]
+        eeimg["ee-dragonslair\nexecution environment"]
     end
 
     subgraph peruser["Per-User Namespace — ApplicationSet"]
+        direction TB
         workspace["DevWorkspace\nauto-started"]
-        secrets["Secrets\nansible-config · quay-registry-secret"]
-        configmap["workspace-env ConfigMap\nVAULT_ADDR"]
+        secrets["Secrets\nansible-config · quay"]
+        configmap["workspace-env\nVAULT_ADDR"]
     end
 
-    bootstrap --> vault
-    bootstrap --> eso
-    bootstrap --> builds
-    bootstrap --> pipelines
-    bootstrap --> devspaces
-    bootstrap --> gitlab
-    bootstrap --> keycloak
-    bootstrap --> aap
+    bootstrap --> platform
+    bootstrap --> apps
     bootstrap -->|"one app per user"| peruser
 
     vault -->|"Kubernetes auth"| eso
@@ -71,12 +69,24 @@ flowchart TB
 
     builds -->|"build & publish"| devimg
     builds -->|"build & publish"| eeimg
-    devimg -->|"workspace container"| workspace
-    eeimg -->|"workspace container"| workspace
+    devimg -->|"workspace image"| workspace
+    eeimg -->|"workspace image"| workspace
     eeimg -->|"job execution"| aap
 
     keycloak -->|"SSO"| gitlab
     devspaces -->|"manages"| workspace
+
+    classDef gitopsStyle fill:#e65100,color:#fff,stroke:#bf360c
+    classDef platformStyle fill:#1565c0,color:#fff,stroke:#0d47a1
+    classDef appsStyle fill:#2e7d32,color:#fff,stroke:#1b5e20
+    classDef imageStyle fill:#6a1b9a,color:#fff,stroke:#4a148c
+    classDef userStyle fill:#00695c,color:#fff,stroke:#004d40
+
+    class bootstrap gitopsStyle
+    class vault,eso,builds,pipelines platformStyle
+    class devspaces,gitlab,keycloak,aap appsStyle
+    class devimg,eeimg imageStyle
+    class workspace,secrets,configmap userStyle
 ```
 
 ## Repository layout

@@ -15,7 +15,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: vault-config
-          image: hashicorp/vault:1.18.1
+          image: registry.connect.redhat.com/hashicorp/vault:1.21.2-ubi
           command: ["/bin/sh", "-c"]
           args:
             - |

@@ -49,3 +49,6 @@ spec:
           checkoutFrom:
             revision: main
           clonePath: product-demos
+  contributions:
+    - name: editor
+      uri: http://plugin-registry.openshift-devspaces.svc:8080/v3/plugins/che-incubator/che-code/latest/devfile.yaml

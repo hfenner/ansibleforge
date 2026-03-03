@@ -12,7 +12,7 @@ metadata:
 spec:
   location: ApplicationMenu
   text: HashiCorp Vault
-  href: https://vault-vault.{{ $clusterDomain }}
+  href: https://vault.{{ $clusterDomain }}
   applicationMenu:
     section: Red Hat Applications
-    imageURL: https://vault-vault.{{ $clusterDomain }}/ui/favicon.ico
+    imageURL: https://vault.{{ $clusterDomain }}/ui/favicon.ico

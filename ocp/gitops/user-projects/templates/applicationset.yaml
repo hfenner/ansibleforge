@@ -20,7 +20,7 @@ spec:
       source:
         repoURL: {{ .Values.repoURL }}
         targetRevision: {{ .Values.targetRevision }}
-        path: ocp/user-devspace
+        path: ocp/gitops/user-devspace
         helm:
           parameters:
             - name: username

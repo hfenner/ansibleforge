@@ -97,15 +97,17 @@ ansibleforge/
 │   ├── ansible-devspaces/   # Developer container image
 │   └── ee-dragonslair/      # Ansible Execution Environment
 └── ocp/
-    ├── bootstrap/           # ArgoCD Application manifests (app-of-apps)
-    ├── vault/               # HashiCorp Vault Helm chart
-    ├── external-secrets/    # ESO operator + ClusterSecretStores
-    ├── shared-builds/       # BuildConfigs + ImageStreams
-    ├── devspaces/           # CheCluster + DevSpaces operator
-    ├── user-devspace/       # Per-user Helm chart (namespace, secrets, DevWorkspace)
-    ├── user-projects/       # ApplicationSet + ArgoCD RBAC
-    ├── pipelines/           # OpenShift Pipelines operator
-    ├── gitlab/              # GitLab operator
-    ├── keycloak/            # Keycloak operator
-    └── aap/                 # Ansible Automation Platform operator
+    ├── playbooks/           # Ansible playbooks
+    └── gitops/
+        ├── bootstrap/       # ArgoCD Application manifests (app-of-apps)
+        ├── vault/           # HashiCorp Vault Helm chart
+        ├── external-secrets/# ESO operator + ClusterSecretStores
+        ├── shared-builds/   # BuildConfigs + ImageStreams
+        ├── devspaces/       # CheCluster + DevSpaces operator
+        ├── user-devspace/   # Per-user Helm chart (namespace, secrets, DevWorkspace)
+        ├── user-projects/   # ApplicationSet + ArgoCD RBAC
+        ├── pipelines/       # OpenShift Pipelines operator
+        ├── gitlab/          # GitLab operator
+        ├── keycloak/        # Keycloak operator
+        └── aap/             # Ansible Automation Platform operator
 ```

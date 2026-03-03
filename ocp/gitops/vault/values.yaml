@@ -10,11 +10,11 @@ vault:
       tag: 1.7.2-ubi
     agentImage:
       repository: registry.connect.redhat.com/hashicorp/vault
-      tag: 1.21.3-ubi
+      tag: 1.21.2-ubi
   server:
     image:
       repository: registry.connect.redhat.com/hashicorp/vault
-      tag: 1.21.3-ubi
+      tag: 1.21.2-ubi
     standalone:
       enabled: true
       config: |

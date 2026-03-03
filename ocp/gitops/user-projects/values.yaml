@@ -4,6 +4,7 @@ users:
   - user3
   - user4
   - user5
+  - admin
 
 repoURL: https://github.com/hfenner/ansibleforge.git
 targetRevision: main

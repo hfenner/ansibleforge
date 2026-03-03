@@ -1,0 +1,49 @@
+{{- range $name, $app := .Values.components }}
+{{- if $app.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $app.name | default $name }}
+  namespace: openshift-gitops
+  {{- if $app.syncWave }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $app.syncWave | quote }}
+  {{- end }}
+spec:
+  project: default
+  source:
+    repoURL: {{ $.Values.repoURL }}
+    targetRevision: {{ $.Values.targetRevision }}
+    path: {{ $app.path }}
+  destination:
+    server: https://kubernetes.default.svc
+    {{- with $app.destination }}
+    {{- with .namespace }}
+    namespace: {{ . }}
+    {{- end }}
+    {{- end }}
+  {{- if $app.ignoreDifferences }}
+  ignoreDifferences:
+    {{- toYaml $app.ignoreDifferences | nindent 4 }}
+  {{- end }}
+  syncPolicy:
+    {{- if not $app.manualSync }}
+    automated:
+      prune: true
+      selfHeal: true
+    {{- end }}
+    {{- if $app.retry }}
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 1
+        maxDuration: 5m
+    {{- end }}
+    {{- if $app.syncOptions }}
+    syncOptions:
+      {{- toYaml $app.syncOptions | nindent 6 }}
+    {{- end }}
+{{- end }}
+{{- end }}

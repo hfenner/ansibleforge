@@ -1,0 +1,133 @@
+repoURL: https://github.com/hfenner/ansibleforge.git
+targetRevision: main
+
+components:
+
+  vault:
+    enabled: true
+    syncWave: "1"
+    path: ocp/gitops/vault
+    destination:
+      namespace: vault
+    retry: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    ignoreDifferences:
+      - group: admissionregistration.k8s.io
+        kind: MutatingWebhookConfiguration
+        name: vault-agent-injector-cfg
+        jsonPointers:
+          - /webhooks/0/clientConfig/caBundle
+
+  external-secrets:
+    enabled: true
+    syncWave: "1"
+    path: ocp/gitops/external-secrets
+    retry: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+  pipelines:
+    enabled: true
+    syncWave: "1"
+    path: ocp/gitops/pipelines
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+  keycloak:
+    enabled: true
+    syncWave: "1"
+    path: ocp/gitops/keycloak
+    retry: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+  gitlab:
+    enabled: true
+    syncWave: "1"
+    path: ocp/gitops/gitlab
+    retry: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+  aap:
+    enabled: true
+    syncWave: "1"
+    name: aap-consolelink
+    path: ocp/gitops/aap
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+  noobaa-tuning:
+    enabled: true
+    syncWave: "1"
+    path: ocp/gitops/noobaa-tuning
+    destination:
+      namespace: openshift-storage
+    manualSync: true
+    retry: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+    ignoreDifferences:
+      - group: noobaa.io
+        kind: NooBaa
+        name: noobaa
+        jsonPointers:
+          - /spec/coreResources
+          - /spec/dbResources
+          - /spec/endpoints
+
+  local-users:
+    enabled: true
+    syncWave: "2"
+    path: ocp/gitops/local-users
+    syncOptions:
+      - ServerSideApply=true
+
+  user-projects:
+    enabled: true
+    syncWave: "2"
+    path: ocp/gitops/user-projects
+    syncOptions:
+      - ServerSideApply=true
+
+  shared-builds:
+    enabled: true
+    syncWave: "3"
+    path: ocp/gitops/shared-builds
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    ignoreDifferences:
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jsonPointers:
+          - /spec/data/0/remoteRef/conversionStrategy
+          - /spec/data/0/remoteRef/decodingStrategy
+          - /spec/data/0/remoteRef/metadataPolicy
+          - /spec/data/1/remoteRef/conversionStrategy
+          - /spec/data/1/remoteRef/decodingStrategy
+          - /spec/data/1/remoteRef/metadataPolicy
+          - /spec/target/creationPolicy
+          - /spec/target/deletionPolicy
+
+  devspaces:
+    enabled: true
+    path: ocp/gitops/devspaces
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+
+  web-terminal:
+    enabled: true
+    path: ocp/gitops/web-terminal
+    syncOptions:
+      - ServerSideApply=true

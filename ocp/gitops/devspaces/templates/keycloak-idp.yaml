@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-oidc-secret
+  namespace: openshift-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+type: Opaque
+stringData:
+  clientSecret: VkkNQT2yb4p7LqPl
+---
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  identityProviders:
+    - name: Local
+      mappingMethod: claim
+      type: HTPasswd
+      htpasswd:
+        fileData:
+          name: htpasswd-secret
+    - name: keycloak
+      mappingMethod: claim
+      type: OpenID
+      openID:
+        clientID: idp-4-ocp
+        clientSecret:
+          name: keycloak-oidc-secret
+        issuer: https://sso.apps.cluster-mp7gr.dynamic.redhatworkshops.io/realms/sso
+        claims:
+          preferredUsername:
+            - preferred_username
+          name:
+            - name
+          email:
+            - email

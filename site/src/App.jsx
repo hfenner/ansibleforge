@@ -83,17 +83,6 @@ export default function App() {
             >
               Get started →
             </a>
-            <button style={{
-              background: 'transparent', border: '1px solid #525252',
-              color: '#d4d4d4', padding: '14px 32px',
-              fontFamily: 'var(--af-font-text)', fontSize: '15px',
-              fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
-            }}
-              onMouseEnter={(e) => { e.target.style.borderColor = '#737373'; e.target.style.color = '#fff' }}
-              onMouseLeave={(e) => { e.target.style.borderColor = '#525252'; e.target.style.color = '#d4d4d4' }}
-            >
-              Configure your deployment
-            </button>
           </div>
 
           <TerminalBlock title="quickstart">

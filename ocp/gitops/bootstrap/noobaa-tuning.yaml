@@ -23,9 +23,6 @@ spec:
     - /spec/dbResources
     - /spec/endpoints
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
     retry:
       limit: 10
       backoff:

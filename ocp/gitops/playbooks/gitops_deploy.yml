@@ -1,0 +1,230 @@
+---
+- name: Deploy OpenShift GitOps Operator
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    gitops_repo_url: https://github.com/hfenner/ansibleforge.git
+    gitops_repo_branch: main
+
+  tasks:
+    - name: Create external-secrets namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: external-secrets
+
+    - name: Create external-secrets-aws-credentials secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: external-secrets-aws-credentials
+            namespace: external-secrets
+          type: Opaque
+          data:
+            aws_access_key_id: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') | b64encode }}"
+            aws_secret_access_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') | b64encode }}"
+
+    - name: Create OpenShift GitOps namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: openshift-gitops-operator
+
+    - name: Create OperatorGroup for OpenShift GitOps
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: openshift-gitops
+            namespace: openshift-gitops-operator
+          spec:
+            upgradeStrategy: Default
+
+    - name: Subscribe to OpenShift GitOps Operator
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: openshift-gitops-operator
+            namespace: openshift-gitops-operator
+          spec:
+            channel: latest
+            name: openshift-gitops-operator
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            installPlanApproval: Automatic
+
+    - name: Ensure pods in openshift-gitops are running
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: openshift-gitops
+      register: pods
+      until: >
+        (pods.resources | length > 0) and
+        (
+          pods.resources
+          | rejectattr('status.phase', 'in', ['Succeeded','Failed'])
+          | map(attribute='status.conditions')
+          | map('selectattr', 'type', 'equalto', 'Ready')
+          | map('selectattr', 'status', 'equalto', 'True')
+          | map('list')
+          | map('length')
+          | sum
+          ==
+          (
+            pods.resources
+            | rejectattr('status.phase', 'in', ['Succeeded','Failed'])
+            | list
+            | length
+          )
+        )
+      retries: 60
+      delay: 10
+
+    - name: Ensure pods in openshift-gitops-operator are running
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: openshift-gitops-operator
+      register: pods
+      until: >
+        (pods.resources | length > 0) and
+        (
+          pods.resources
+          | rejectattr('status.phase', 'in', ['Succeeded','Failed'])
+          | map(attribute='status.conditions')
+          | map('selectattr', 'type', 'equalto', 'Ready')
+          | map('selectattr', 'status', 'equalto', 'True')
+          | map('list')
+          | map('length')
+          | sum
+          ==
+          (
+            pods.resources
+            | rejectattr('status.phase', 'in', ['Succeeded','Failed'])
+            | list
+            | length
+          )
+        )
+      retries: 60
+      delay: 10
+
+    - name: Grant cluster-admin to ArgoCD application controller
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: openshift-gitops-controller-cluster-admin
+          subjects:
+            - kind: ServiceAccount
+              name: openshift-gitops-argocd-application-controller
+              namespace: openshift-gitops
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+
+    - name: Create ArgoCD instance
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: argoproj.io/v1beta1
+          kind: ArgoCD
+          metadata:
+            name: openshift-gitops
+            namespace: openshift-gitops
+          spec:
+            resourceHealthChecks:
+            - group: ""
+              kind: PersistentVolumeClaim
+              check: |
+                hs = {}
+                if obj.status == nil or obj.status.phase == nil then
+                  hs.status = "Healthy"
+                  hs.message = "Waiting for first consumer"
+                elseif obj.status.phase == "Pending" then
+                  hs.status = "Healthy"
+                  hs.message = "Waiting for first consumer"
+                elseif obj.status.phase == "Bound" then
+                  hs.status = "Healthy"
+                else
+                  hs.status = "Degraded"
+                  hs.message = "PVC is in " .. obj.status.phase .. " phase"
+                end
+                return hs
+            server:
+              route:
+                enabled: true
+            resourceTrackingMethod: annotation
+
+    - name: Configure ArgoCD knownTypeFields for OpenShift types
+      kubernetes.core.k8s:
+        state: patched
+        kind: ConfigMap
+        name: argocd-cm
+        namespace: openshift-gitops
+        definition:
+          data:
+            resource.customizations.knownTypeFields.build.openshift.io_BuildConfig: |
+              [{"field": "spec", "type": "build.openshift.io/v1/BuildConfigSpec"}]
+            resource.customizations.knownTypeFields.image.openshift.io_ImageStream: |
+              [{"field": "spec", "type": "image.openshift.io/v1/ImageStreamSpec"}]
+
+    - name: Create cluster-bootstrap Application
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: cluster-bootstrap
+            namespace: openshift-gitops
+          spec:
+            project: default
+            source:
+              repoURL: "{{ gitops_repo_url }}"
+              targetRevision: "{{ gitops_repo_branch }}"
+              path: ocp/gitops/bootstrap
+            destination:
+              server: https://kubernetes.default.svc
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - ServerSideApply=true
+
+    - name: Get ArgoCD route
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: openshift-gitops-server
+        namespace: openshift-gitops
+      register: argocd_route
+
+    - name: Display ArgoCD access information
+      ansible.builtin.debug:
+        msg:
+          - "OpenShift GitOps deployed successfully"
+          - "ArgoCD URL: https://{{ argocd_route.resources[0].spec.host }}"
+          - "Login with OpenShift credentials or retrieve admin password:"
+          - "  oc extract secret/openshift-gitops-cluster -n openshift-gitops --to=-"
+      when: argocd_route.resources | length > 0

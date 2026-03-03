@@ -31,8 +31,8 @@ spec:
               ROOT_TOKEN=$(curl -sf --cacert "${CACERT}" \
                 -H "Authorization: Bearer ${SA_TOKEN}" \
                 "${API}/api/v1/namespaces/${NS}/secrets/vault-unseal-keys" \
-                | grep '"root-token"' \
-                | grep -o '"[A-Za-z0-9._-]*"$' \
+                | grep -o '"root-token":"[^"]*"' \
+                | grep -o '"[^"]*"$' \
                 | tr -d '"' \
                 | base64 -d)
 

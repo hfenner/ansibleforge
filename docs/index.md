@@ -97,7 +97,7 @@ ansibleforge/
 │   ├── ansible-devspaces/   # Developer container image
 │   └── ee-dragonslair/      # Ansible Execution Environment
 └── ocp/
-    ├── playbooks/           # Ansible playbooks
+    ├── ansible/             # Ansible playbooks
     └── gitops/
         ├── bootstrap/       # ArgoCD Application manifests (app-of-apps)
         ├── vault/           # HashiCorp Vault Helm chart

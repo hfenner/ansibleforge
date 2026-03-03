@@ -23,7 +23,7 @@ spec:
       htpasswd:
         fileData:
           name: htpasswd-secret
-    - name: keycloak
+    - name: rhbk
       mappingMethod: claim
       type: OpenID
       openID:

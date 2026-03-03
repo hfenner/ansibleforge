@@ -27,6 +27,8 @@ spec:
     disableContainerRunCapabilities: false
     {{- end }}
     startTimeoutSeconds: 600
+    maxNumberOfWorkspacesPerUser: -1
+    secondsOfInactivityBeforeIdling: -1
     storage:
       pvcStrategy: per-user
     defaultNamespace:

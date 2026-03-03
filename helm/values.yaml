@@ -25,8 +25,7 @@ ansible:
 
   collections:
     - kubernetes.core:==3.2.0
-    - redhat.openshift:==4.1.0
-
+    
   extraVars:
     gitops_repo_url: "https://github.com/hfenner/ansibleforge.git"
     gitops_repo_branch: "main"

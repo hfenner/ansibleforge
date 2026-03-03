@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: "{{ ocp4_workload_ansibleforge_bootstrap_application_name }}"
+  namespace: "{{ ocp4_workload_ansibleforge_bootstrap_namespace }}"
+spec:
+  project: default
+  source:
+    repoURL: "{{ ocp4_workload_ansibleforge_bootstrap_repo_url }}"
+    targetRevision: "{{ ocp4_workload_ansibleforge_bootstrap_repo_revision }}"
+    path: "{{ ocp4_workload_ansibleforge_bootstrap_repo_path }}"
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

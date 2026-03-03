@@ -1,0 +1,8 @@
+---
+- name: Delete cluster-bootstrap Application
+  kubernetes.core.k8s:
+    state: absent
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    name: "{{ ocp4_workload_ansibleforge_bootstrap_application_name }}"
+    namespace: "{{ ocp4_workload_ansibleforge_bootstrap_namespace }}"

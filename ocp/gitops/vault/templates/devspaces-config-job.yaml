@@ -91,6 +91,34 @@ spec:
                 policies="devspaces-user" \
                 ttl="1h"
 
+              echo "=== Seeding default secret values (no-overwrite) ==="
+
+              # Write a secret only if it does not already exist (HTTP 404).
+              # Any other existing value (200) is left untouched.
+              init_secret() {
+                local path="$1" data="$2"
+                local status
+                status=$(curl -s -o /dev/null -w "%{http_code}" \
+                  -H "X-Vault-Token: ${VAULT_TOKEN}" \
+                  "${VAULT_ADDR}/v1/secret/data/${path}")
+                case "$status" in
+                  200) echo "secret/data/${path} exists, skipping" ;;
+                  404)
+                    curl -sf -X POST \
+                      -H "X-Vault-Token: ${VAULT_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      -d "{\"data\":${data}}" \
+                      "${VAULT_ADDR}/v1/secret/data/${path}" > /dev/null
+                    echo "secret/data/${path} seeded with default value"
+                    ;;
+                  *) echo "WARNING: unexpected status ${status} for secret/data/${path}, skipping" ;;
+                esac
+              }
+
+              init_secret "github"  '{"token":"test"}'
+              init_secret "ansible" '{"automationhub_token":"test"}'
+              init_secret "quay"    '{"username":"test","password":"test"}'
+
               echo "=== Vault configuration complete ==="
               echo "KV engine:"
               vault secrets list | grep secret

@@ -47,7 +47,7 @@ components:
       - SkipDryRunOnMissingResource=true
 
   keycloak:
-    enabled: true
+    enabled: false
     syncWave: "1"
     path: ocp/gitops/keycloak
     retry: true
@@ -74,7 +74,7 @@ components:
       - SkipDryRunOnMissingResource=true
 
   noobaa-tuning:
-    enabled: true
+    enabled: false
     syncWave: "1"
     path: ocp/gitops/noobaa-tuning
     destination:

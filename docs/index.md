@@ -18,7 +18,7 @@ It combines purpose-built developer containers, a custom Execution Environment, 
 
 - Everything deployed and reconciled by ArgoCD — one bootstrap Application deploys the entire stack
 - [HashiCorp Vault](infrastructure/vault.md) auto-initialized, unsealed, and configured on first boot
-- [External Secrets Operator](infrastructure/external-secrets.md) syncing from Vault and AWS Secrets Manager
+- [External Secrets Operator](infrastructure/external-secrets.md) with two backends: HashiCorp Vault and AWS Secrets Manager (provisioned via Cloud Credentials Operator)
 - Per-user workspace provisioning via ArgoCD ApplicationSet — adding a user is a one-line git change
 - [Shared Builds](infrastructure/shared-builds.md) keeping container images fresh in the internal registry
 

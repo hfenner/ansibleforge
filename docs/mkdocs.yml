@@ -1,0 +1,70 @@
+site_name: AnsibleForge
+site_url: https://hfenner.github.io/ansibleforge/docs/
+site_description: A GitOps-driven Ansible development environment on OpenShift — batteries included.
+repo_url: https://github.com/hfenner/ansibleforge
+repo_name: hfenner/ansibleforge
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  palette:
+    scheme: slate
+  font: false
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Containers:
+      - containers/index.md
+      - ansible-devspaces: containers/ansible-devspaces.md
+      - ee-dragonslair: containers/ee-dragonslair.md
+  - Infrastructure:
+      - infrastructure/index.md
+      - HashiCorp Vault: infrastructure/vault.md
+      - External Secrets: infrastructure/external-secrets.md
+      - Shared Builds: infrastructure/shared-builds.md
+      - DevSpaces: infrastructure/devspaces.md
+      - User Provisioning: infrastructure/user-provisioning.md
+      - OpenShift Pipelines: infrastructure/pipelines.md
+      - GitLab: infrastructure/gitlab.md
+      - Keycloak: infrastructure/keycloak.md
+      - AAP: infrastructure/aap.md
+      - RHDP Integration: infrastructure/rhdp.md

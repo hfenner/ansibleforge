@@ -1,0 +1,169 @@
+/* ============================================
+   AnsibleForge — MkDocs Material Theme Overrides
+   Matches the React marketing site's dark Red Hat aesthetic
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --af-bg-darkest: #0c0c0c;
+  --af-bg-dark: #151515;
+  --af-bg-surface: #1a1a1a;
+  --af-bg-elevated: #1e1e1e;
+  --af-border: #2a2a2a;
+  --af-red: #ee0000;
+  --af-amber: #f0ab00;
+  --af-green: #3e8635;
+  --af-blue: #73bcf7;
+
+  --md-primary-fg-color: var(--af-red);
+  --md-primary-bg-color: var(--af-bg-dark);
+  --md-accent-fg-color: var(--af-blue);
+  --md-default-bg-color: var(--af-bg-dark);
+  --md-default-fg-color: #e0e0e0;
+  --md-default-fg-color--light: #a3a3a3;
+  --md-default-fg-color--lighter: #525252;
+  --md-default-fg-color--lightest: #2a2a2a;
+  --md-code-bg-color: var(--af-bg-darkest);
+  --md-code-fg-color: #e0e0e0;
+  --md-code-hl-color: rgba(238, 0, 0, 0.12);
+  --md-text-font: 'Red Hat Text', sans-serif;
+  --md-code-font: 'Red Hat Mono', monospace;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: var(--af-bg-dark);
+  --md-default-bg-color--light: var(--af-bg-surface);
+}
+
+/* Header */
+.md-header {
+  background: rgba(21, 21, 21, 0.92) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--af-border);
+  box-shadow: none !important;
+}
+
+.md-header__title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700;
+}
+
+/* Sidebar */
+.md-sidebar { background: var(--af-bg-dark); }
+.md-sidebar__scrollwrap { border-right: 1px solid var(--af-border); }
+.md-nav__link { font-family: 'Red Hat Text', sans-serif; }
+
+.md-nav__link--active {
+  color: #fff !important;
+  font-weight: 500;
+  border-left: 2px solid var(--af-red);
+  padding-left: 10px;
+}
+
+/* Content typography */
+.md-content { font-family: 'Red Hat Text', sans-serif; }
+
+.md-typeset h1, .md-typeset h2, .md-typeset h3,
+.md-typeset h4, .md-typeset h5, .md-typeset h6 {
+  font-family: 'Red Hat Display', sans-serif;
+  color: #fff;
+  font-weight: 600;
+}
+
+.md-typeset h1 { font-weight: 700; }
+.md-typeset h2 { padding-bottom: 8px; border-bottom: 2px solid var(--af-red); }
+
+/* Links */
+.md-typeset a { color: var(--af-blue); text-underline-offset: 3px; }
+.md-typeset a:hover { color: #fff; }
+
+/* Code */
+.md-typeset code {
+  background: var(--af-bg-darkest);
+  border: 1px solid var(--af-border);
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 0.82em;
+  color: #e0e0e0;
+}
+
+.md-typeset pre { border: 1px solid var(--af-border); }
+.md-typeset pre > code { border: none; font-size: 13px; line-height: 1.8; }
+
+.md-typeset .highlight .filename {
+  background: var(--af-bg-surface);
+  border-bottom: 1px solid var(--af-border);
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px;
+  color: #525252;
+}
+
+/* Admonitions */
+.md-typeset .admonition, .md-typeset details {
+  background: var(--af-bg-darkest) !important;
+  border: 1px solid var(--af-border) !important;
+  border-left: 3px solid var(--af-red) !important;
+  box-shadow: none !important;
+}
+
+.md-typeset .admonition-title, .md-typeset summary {
+  background: var(--af-bg-surface) !important;
+  border-bottom: 1px solid var(--af-border) !important;
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 500;
+}
+
+.md-typeset .admonition.note { border-left-color: var(--af-blue) !important; }
+.md-typeset .admonition.tip { border-left-color: var(--af-green) !important; }
+.md-typeset .admonition.warning { border-left-color: var(--af-amber) !important; }
+.md-typeset .admonition.danger { border-left-color: var(--af-red) !important; }
+
+/* Tables */
+.md-typeset table:not([class]) { border: 1px solid var(--af-border); }
+
+.md-typeset table:not([class]) th {
+  background: var(--af-bg-surface);
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--af-red);
+  font-weight: 500;
+}
+
+.md-typeset table:not([class]) td { border-top: 1px solid var(--af-border); }
+
+/* Tabs */
+.md-typeset .tabbed-labels > label { font-family: 'Red Hat Text', sans-serif; }
+
+/* Footer */
+.md-footer { background: var(--af-bg-dark); border-top: 1px solid var(--af-border); }
+.md-footer-meta { background: var(--af-bg-dark); }
+
+/* Search */
+.md-search__form { background: var(--af-bg-surface); border: 1px solid var(--af-border); }
+.md-search__input { font-family: 'Red Hat Text', sans-serif; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--af-bg-dark); }
+::-webkit-scrollbar-thumb { background: #333; }
+
+::selection { background: rgba(238, 0, 0, 0.25); color: #fff; }
+
+/* Back-to-top */
+.md-top {
+  background: var(--af-bg-surface) !important;
+  border: 1px solid var(--af-border) !important;
+  color: #e0e0e0 !important;
+  box-shadow: none !important;
+}
+
+.md-source { font-family: 'Red Hat Mono', monospace; }
+
+/* Mermaid */
+.mermaid {
+  background: var(--af-bg-darkest);
+  padding: 16px;
+  border: 1px solid var(--af-border);
+}

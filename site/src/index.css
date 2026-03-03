@@ -1,0 +1,80 @@
+/* ============================================
+   AnsibleForge — Shared Design Tokens
+   Red Hat dark aesthetic
+   ============================================ */
+
+:root {
+  /* Background */
+  --af-bg-darkest: #0c0c0c;
+  --af-bg-dark: #151515;
+  --af-bg-surface: #1a1a1a;
+  --af-bg-elevated: #1e1e1e;
+
+  /* Borders */
+  --af-border: #2a2a2a;
+  --af-border-subtle: #222222;
+
+  /* Text */
+  --af-text-primary: #e0e0e0;
+  --af-text-secondary: #a3a3a3;
+  --af-text-muted: #525252;
+  --af-text-bright: #ffffff;
+
+  /* Red Hat brand colors */
+  --af-red: #ee0000;
+  --af-red-dark: #cc0000;
+  --af-amber: #f0ab00;
+  --af-green: #3e8635;
+  --af-blue: #73bcf7;
+  --af-purple: #a78bfa;
+
+  /* Fonts */
+  --af-font-display: 'Red Hat Display', sans-serif;
+  --af-font-text: 'Red Hat Text', sans-serif;
+  --af-font-mono: 'Red Hat Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--af-bg-dark);
+  color: var(--af-text-primary);
+  font-family: var(--af-font-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(238, 0, 0, 0.25);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--af-bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+}
+
+a {
+  color: var(--af-blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: #fff;
+}

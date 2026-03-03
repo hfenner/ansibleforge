@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if page.is_homepage %}
+<div style="
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: var(--af-bg-surface, #1a1a1a);
+  border: 1px solid var(--af-border, #2a2a2a);
+  border-left: 3px solid var(--af-red, #ee0000);
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 14px;
+">
+  Looking for the overview?
+  <a href="/ansibleforge/" style="color: var(--af-blue, #73bcf7); text-decoration: underline; text-underline-offset: 3px;">
+    Visit the AnsibleForge home page →
+  </a>
+</div>
+{% endif %}
+{{ super() }}
+{% endblock %}

@@ -1,14 +1,24 @@
 # Getting Started
 
-## Prerequisites
+There are two ways to bootstrap AnsibleForge onto a cluster:
+
+| Method | Best for |
+|--------|----------|
+| [Manual bootstrap](#manual-bootstrap) | Your own cluster with cluster-admin access |
+| [RHDP Field Content CI](infrastructure/rhdp.md) | Red Hat Demo Platform — no cluster required |
+
+---
+
+## Manual bootstrap
+
+### Prerequisites
 
 - OpenShift 4.12+ cluster with cluster-admin access
-- [OpenShift GitOps](https://docs.openshift.com/gitops/latest) operator installed (provides ArgoCD)
 - A fork of this repository
 
-## 1. Fork and configure
+### 1. Fork and configure
 
-Fork `hfenner/ansibleforge` and update `ocp/user-projects/values.yaml` with your OpenShift usernames and your fork URL:
+Fork `hfenner/ansibleforge` and update `ocp/gitops/user-projects/values.yaml` with your OpenShift usernames and your fork URL:
 
 ```yaml
 users:
@@ -19,22 +29,30 @@ repoURL: https://github.com/<your-fork>/ansibleforge.git
 targetRevision: main
 ```
 
-## 2. Bootstrap ArgoCD
+### 2. Bootstrap ArgoCD
 
-Apply a single Application manifest to your cluster. ArgoCD will deploy the entire stack from there.
+Run the `gitops_deploy.yml` playbook against your cluster. It installs the OpenShift GitOps operator and creates the ArgoCD app-of-apps Application:
+
+```bash
+ansible-playbook ocp/ansible/gitops_deploy.yml \
+  -e gitops_repo_url=https://github.com/<your-fork>/ansibleforge.git \
+  -e gitops_repo_branch=main
+```
+
+Or apply the bootstrap Application directly if ArgoCD is already installed:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ansibleforge
+  name: cluster-bootstrap
   namespace: openshift-gitops
 spec:
   project: default
   source:
     repoURL: https://github.com/<your-fork>/ansibleforge.git
     targetRevision: main
-    path: ocp/bootstrap
+    path: ocp/gitops/bootstrap
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:
@@ -50,7 +68,7 @@ spec:
 oc apply -f ansibleforge-bootstrap.yaml
 ```
 
-## 3. Wait for Vault
+### 3. Wait for Vault
 
 Vault initializes automatically on first boot. Watch for the unseal keys secret to appear:
 
@@ -65,7 +83,7 @@ Once present, the `vault-config` PostSync job runs and configures:
 - `external-secrets` role for ESO
 - `devspaces-user` role for workspace pods
 
-## 4. Populate secrets
+### 4. Populate secrets
 
 Secrets are never stored in git. Populate them in Vault after it is running:
 
@@ -89,7 +107,7 @@ oc exec -it vault-0 -n vault -- \
     Access the Vault UI from the OpenShift console application menu.
     The console link URL is auto-discovered from the cluster's ingress domain at sync time.
 
-## 5. Trigger image builds
+### 5. Trigger image builds
 
 Start the shared builds to populate the internal image registry:
 
@@ -98,7 +116,7 @@ oc start-build ansible-devspaces -n shared-builds --follow
 oc start-build ee-dragonslair -n shared-builds --follow
 ```
 
-## 6. Access your workspace
+### 6. Access your workspace
 
 Once DevSpaces is ready, each configured user has a running workspace waiting for them.
 Log in to the DevSpaces route — you'll be directed straight to your workspace.
@@ -107,7 +125,7 @@ Log in to the DevSpaces route — you'll be directed straight to your workspace.
 oc get route devspaces -n devspaces
 ```
 
-## Sync wave order
+### Sync wave order
 
 | Wave | What deploys |
 |------|-------------|

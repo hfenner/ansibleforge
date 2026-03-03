@@ -50,6 +50,7 @@ nav:
     - GitLab: infrastructure/gitlab.md
     - Keycloak: infrastructure/keycloak.md
     - AAP: infrastructure/aap.md
+    - RHDP Integration: infrastructure/rhdp.md
 
 markdown_extensions:
   - admonition

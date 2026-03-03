@@ -1,6 +1,6 @@
 # External Secrets Operator
 
-**Chart:** `ocp/external-secrets/`
+**Chart:** `ocp/gitops/external-secrets/`
 **Namespace:** `external-secrets`
 
 ## Overview
@@ -27,7 +27,9 @@ provider:
 ```
 
 ### aws-secrets-manager
-Authenticates via IRSA (IAM Roles for Service Accounts) — no static AWS credentials required.
+Only deployed on AWS clusters — a Helm `lookup` on the cluster `Infrastructure` object checks `.status.platform` at sync time and skips this store on non-AWS clusters.
+
+Credentials are provisioned automatically by the [Cloud Credentials Operator (CCO)](https://docs.openshift.com/container-platform/latest/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html) via a `CredentialsRequest` in the same chart. CCO creates the `external-secrets-aws-credentials` Secret with a scoped IAM policy (`secretsmanager:GetSecretValue`, `secretsmanager:ListSecrets`, `kms:Decrypt`) — no static keys are stored in git.
 
 ```yaml
 provider:
@@ -35,10 +37,15 @@ provider:
     service: SecretsManager
     region: us-east-2
     auth:
-      jwt:
-        serviceAccountRef:
-          name: cluster-external-secrets
+      secretRef:
+        accessKeyIDSecretRef:
+          name: external-secrets-aws-credentials
           namespace: external-secrets
+          key: aws_access_key_id
+        secretAccessKeySecretRef:
+          name: external-secrets-aws-credentials
+          namespace: external-secrets
+          key: aws_secret_access_key
 ```
 
 ## Per-user secrets

@@ -93,11 +93,14 @@ flowchart LR
 
 ```
 ansibleforge/
+├── helm/                    # RHDP Field Content CI entry point (ansible-runner Job chart)
 ├── containers/
 │   ├── ansible-devspaces/   # Developer container image
 │   └── ee-dragonslair/      # Ansible Execution Environment
+├── devspaces-template/      # DevSpaces devfile template
 └── ocp/
-    ├── ansible/             # Ansible playbooks
+    ├── ansible/             # Ansible playbooks + collections requirements
+    │   └── gitops_deploy.yml# Installs GitOps operator and bootstraps ArgoCD
     └── gitops/
         ├── bootstrap/       # ArgoCD Application manifests (app-of-apps)
         ├── vault/           # HashiCorp Vault Helm chart

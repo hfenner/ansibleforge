@@ -27,9 +27,9 @@ spec:
           cpuRequest: 250m
           cpuLimit: 2000m
           args: ['tail', '-f', '/dev/null']
-          envFrom:
-            - configMapRef:
-                name: workspace-env
+          env:
+            - name: VAULT_ADDR
+              value: {{ .Values.vaultAddr }}
       - name: ee-dragonslair
         container:
           image: image-registry.openshift-image-registry.svc:5000/{{ .Values.buildsNamespace }}/ee-dragonslair:latest
@@ -38,9 +38,9 @@ spec:
           cpuRequest: 250m
           cpuLimit: 2000m
           args: ['tail', '-f', '/dev/null']
-          envFrom:
-            - configMapRef:
-                name: workspace-env
+          env:
+            - name: VAULT_ADDR
+              value: {{ .Values.vaultAddr }}
     projects:
       - name: product-demos
         git:

@@ -1,0 +1,104 @@
+apiVersion: workspace.devfile.io/v1alpha2
+kind: DevWorkspaceTemplate
+metadata:
+  name: che-code-product-demos
+  namespace: {{ .Values.username }}-devspaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: ServerSideApply=false
+spec:
+  commands:
+    - apply:
+        component: che-code-injector
+      id: init-container-command
+    - exec:
+        commandLine: nohup /checode/entrypoint-volume.sh > /checode/entrypoint-logs.txt 2>&1 &
+        component: che-code-runtime-description
+      id: init-che-code-command
+  components:
+    - container:
+        command:
+          - /entrypoint-init-container.sh
+        cpuLimit: 500m
+        cpuRequest: 30m
+        env:
+          - name: CHE_DASHBOARD_URL
+            value: https://devspaces.apps.{{ .Values.clusterDomain }}
+          - name: CHE_PLUGIN_REGISTRY_URL
+            value: https://devspaces.apps.{{ .Values.clusterDomain }}/plugin-registry/v3
+          - name: CHE_PLUGIN_REGISTRY_INTERNAL_URL
+            value: http://plugin-registry.openshift-devspaces.svc:8080/v3
+          - name: OPENVSX_REGISTRY_URL
+            value: ""
+        image: {{ .Values.cheCodeImage }}
+        memoryLimit: 256Mi
+        memoryRequest: 32Mi
+        sourceMapping: /projects
+        volumeMounts:
+          - name: checode
+            path: /checode
+      name: che-code-injector
+    - attributes:
+        app.kubernetes.io/component: che-code-runtime
+        app.kubernetes.io/part-of: che-code.eclipse.org
+        controller.devfile.io/container-contribution: true
+      container:
+        cpuLimit: 500m
+        cpuRequest: 30m
+        endpoints:
+          - attributes:
+              cookiesAuthEnabled: true
+              discoverable: false
+              type: main
+              urlRewriteSupported: true
+            exposure: public
+            name: che-code
+            protocol: https
+            secure: true
+            targetPort: 3100
+          - attributes:
+              discoverable: false
+              urlRewriteSupported: false
+            exposure: public
+            name: code-redirect-1
+            protocol: https
+            targetPort: 13131
+          - attributes:
+              discoverable: false
+              urlRewriteSupported: false
+            exposure: public
+            name: code-redirect-2
+            protocol: https
+            targetPort: 13132
+          - attributes:
+              discoverable: false
+              urlRewriteSupported: false
+            exposure: public
+            name: code-redirect-3
+            protocol: https
+            targetPort: 13133
+        env:
+          - name: CHE_DASHBOARD_URL
+            value: https://devspaces.apps.{{ .Values.clusterDomain }}
+          - name: CHE_PLUGIN_REGISTRY_URL
+            value: https://devspaces.apps.{{ .Values.clusterDomain }}/plugin-registry/v3
+          - name: CHE_PLUGIN_REGISTRY_INTERNAL_URL
+            value: http://plugin-registry.openshift-devspaces.svc:8080/v3
+          - name: OPENVSX_REGISTRY_URL
+            value: ""
+        image: {{ .Values.cheCodeImage }}
+        memoryLimit: 512Mi
+        memoryRequest: 256Mi
+        sourceMapping: /projects
+        volumeMounts:
+          - name: checode
+            path: /checode
+      name: che-code-runtime-description
+  events:
+    postStart:
+      - init-che-code-command
+    preStart:
+      - init-container-command
+  variables:
+    OPENVSX_REGISTRY_URL: ""
+    PLUGIN_REGISTRY_URL: https://devspaces.apps.{{ .Values.clusterDomain }}/plugin-registry/v3

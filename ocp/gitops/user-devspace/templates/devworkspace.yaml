@@ -48,7 +48,6 @@ spec:
             origin: {{ .Values.gitPath }}/product-demos.git
           checkoutFrom:
             revision: main
-          clonePath: product-demos
   contributions:
     - name: editor
       kubernetes:

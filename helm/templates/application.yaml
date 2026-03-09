@@ -22,28 +22,22 @@ spec:
         - name: components.efs.helm.parameters[0].value
           value: {{ .Values.aws.efs.filesystemId | quote }}
         {{- end }}
-        {{- if .Values.aws.ingressCerts.clusterDomain }}
-        - name: components.ingress-certs.helm.parameters[0].name
-          value: clusterDomain
-        - name: components.ingress-certs.helm.parameters[0].value
-          value: {{ .Values.aws.ingressCerts.clusterDomain | quote }}
-        {{- end }}
         {{- if .Values.aws.ingressCerts.acmeEmail }}
-        - name: components.ingress-certs.helm.parameters[1].name
+        - name: components.ingress-certs.helm.parameters[0].name
           value: acme.email
-        - name: components.ingress-certs.helm.parameters[1].value
+        - name: components.ingress-certs.helm.parameters[0].value
           value: {{ .Values.aws.ingressCerts.acmeEmail | quote }}
         {{- end }}
         {{- if .Values.aws.ingressCerts.route53Region }}
-        - name: components.ingress-certs.helm.parameters[2].name
+        - name: components.ingress-certs.helm.parameters[1].name
           value: route53.region
-        - name: components.ingress-certs.helm.parameters[2].value
+        - name: components.ingress-certs.helm.parameters[1].value
           value: {{ .Values.aws.ingressCerts.route53Region | quote }}
         {{- end }}
         {{- if .Values.aws.ingressCerts.route53HostedZoneID }}
-        - name: components.ingress-certs.helm.parameters[3].name
+        - name: components.ingress-certs.helm.parameters[2].name
           value: route53.hostedZoneID
-        - name: components.ingress-certs.helm.parameters[3].value
+        - name: components.ingress-certs.helm.parameters[2].value
           value: {{ .Values.aws.ingressCerts.route53HostedZoneID | quote }}
         {{- end }}
   destination:

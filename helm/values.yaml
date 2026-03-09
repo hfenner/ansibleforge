@@ -24,7 +24,6 @@ aws:
   efs:
     filesystemId: ""
   ingressCerts:
-    clusterDomain: ""
     acmeEmail: ""
     route53Region: ""
     route53HostedZoneID: ""

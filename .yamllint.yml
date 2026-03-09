@@ -24,3 +24,6 @@ rules:
 
 ignore:
   - .github/
+  - "**/templates/"
+  - helm/
+  - ocp/ansible/

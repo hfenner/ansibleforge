@@ -1,3 +1,5 @@
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
@@ -7,7 +9,7 @@ metadata:
 spec:
   location: ApplicationMenu
   text: Keycloak
-  href: https://sso.{{ .Values.domain }}
+  href: https://sso.{{ $clusterDomain }}
   applicationMenu:
     section: Red Hat Applications
-    imageURL: https://sso.{{ .Values.domain }}/favicon.ico
+    imageURL: https://sso.{{ $clusterDomain }}/favicon.ico

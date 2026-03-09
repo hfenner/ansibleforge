@@ -1,3 +1,5 @@
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 apiVersion: workspace.devfile.io/v1alpha2
 kind: DevWorkspaceTemplate
 metadata:
@@ -23,9 +25,9 @@ spec:
         cpuRequest: 30m
         env:
           - name: CHE_DASHBOARD_URL
-            value: https://devspaces.apps.{{ .Values.clusterDomain }}
+            value: https://devspaces.{{ $clusterDomain }}
           - name: CHE_PLUGIN_REGISTRY_URL
-            value: https://devspaces.apps.{{ .Values.clusterDomain }}/plugin-registry/v3
+            value: https://devspaces.{{ $clusterDomain }}/plugin-registry/v3
           - name: CHE_PLUGIN_REGISTRY_INTERNAL_URL
             value: http://plugin-registry.openshift-devspaces.svc:8080/v3
           - name: OPENVSX_REGISTRY_URL
@@ -79,9 +81,9 @@ spec:
             targetPort: 13133
         env:
           - name: CHE_DASHBOARD_URL
-            value: https://devspaces.apps.{{ .Values.clusterDomain }}
+            value: https://devspaces.{{ $clusterDomain }}
           - name: CHE_PLUGIN_REGISTRY_URL
-            value: https://devspaces.apps.{{ .Values.clusterDomain }}/plugin-registry/v3
+            value: https://devspaces.{{ $clusterDomain }}/plugin-registry/v3
           - name: CHE_PLUGIN_REGISTRY_INTERNAL_URL
             value: http://plugin-registry.openshift-devspaces.svc:8080/v3
           - name: OPENVSX_REGISTRY_URL
@@ -101,4 +103,4 @@ spec:
       - init-container-command
   variables:
     OPENVSX_REGISTRY_URL: ""
-    PLUGIN_REGISTRY_URL: https://devspaces.apps.{{ .Values.clusterDomain }}/plugin-registry/v3
+    PLUGIN_REGISTRY_URL: https://devspaces.{{ $clusterDomain }}/plugin-registry/v3

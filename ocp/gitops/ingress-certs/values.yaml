@@ -1,5 +1,3 @@
-clusterDomain: apps.cluster.example.com
-
 acme:
   email: user@example.com
 

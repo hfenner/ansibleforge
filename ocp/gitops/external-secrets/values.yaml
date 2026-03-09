@@ -1,4 +1,5 @@
 aws:
+  enabled: false
   region: us-east-2
 
 vault:

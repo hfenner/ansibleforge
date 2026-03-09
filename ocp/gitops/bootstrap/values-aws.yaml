@@ -6,15 +6,19 @@
 #     --set valueFiles[0]=values-aws.yaml \
 #     --set "components.efs.helm.parameters[0].name=efs.filesystemId" \
 #     --set "components.efs.helm.parameters[0].value=fs-abc123" \
-#     --set "components.ingress-certs.helm.parameters[0].name=clusterDomain" \
-#     --set "components.ingress-certs.helm.parameters[0].value=apps.cluster.example.com" \
-#     --set "components.ingress-certs.helm.parameters[1].name=acme.email" \
-#     --set "components.ingress-certs.helm.parameters[1].value=user@example.com" \
-#     --set "components.ingress-certs.helm.parameters[2].name=route53.region" \
-#     --set "components.ingress-certs.helm.parameters[2].value=us-east-2" \
-#     --set "components.ingress-certs.helm.parameters[3].name=route53.hostedZoneID" \
-#     --set "components.ingress-certs.helm.parameters[3].value=Z3BGLV2DZIFZBI"
+#     --set "components.ingress-certs.helm.parameters[0].name=acme.email" \
+#     --set "components.ingress-certs.helm.parameters[0].value=user@example.com" \
+#     --set "components.ingress-certs.helm.parameters[1].name=route53.region" \
+#     --set "components.ingress-certs.helm.parameters[1].value=us-east-2" \
+#     --set "components.ingress-certs.helm.parameters[2].name=route53.hostedZoneID" \
+#     --set "components.ingress-certs.helm.parameters[2].value=Z3BGLV2DZIFZBI"
 components:
+
+  external-secrets:
+    helm:
+      parameters:
+        - name: aws.enabled
+          value: "true"
 
   cert-manager:
     enabled: true

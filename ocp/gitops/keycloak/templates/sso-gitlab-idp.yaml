@@ -1,4 +1,6 @@
 {{- if .Values.gitlab.broker }}
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 {{- $oauthSecret := lookup "v1" "Secret" "gitlab-system" "gitlab-keycloak-broker-oauth" }}
 {{- if and $oauthSecret $oauthSecret.data }}
 {{- $clientId := index $oauthSecret.data "id" | b64dec }}
@@ -44,10 +46,10 @@ spec:
         config:
           clientId: $(GITLAB_BROKER_CLIENT_ID)
           clientSecret: $(GITLAB_BROKER_CLIENT_SECRET)
-          authorizationUrl: https://{{ .Values.gitlabDomain }}/oauth/authorize
-          tokenUrl: https://{{ .Values.gitlabDomain }}/oauth/token
-          userInfoUrl: https://{{ .Values.gitlabDomain }}/oauth/userinfo
-          issuer: https://{{ .Values.gitlabDomain }}
+          authorizationUrl: https://gitlab.{{ $clusterDomain }}/oauth/authorize
+          tokenUrl: https://gitlab.{{ $clusterDomain }}/oauth/token
+          userInfoUrl: https://gitlab.{{ $clusterDomain }}/oauth/userinfo
+          issuer: https://gitlab.{{ $clusterDomain }}
           defaultScope: openid profile email
           syncMode: FORCE
           pkceEnabled: "true"

@@ -1,3 +1,5 @@
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -7,9 +9,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   secretName: ingress-wildcard-tls
-  commonName: "*.{{ .Values.clusterDomain }}"
+  commonName: "*.{{ $clusterDomain }}"
   dnsNames:
-    - "*.{{ .Values.clusterDomain }}"
+    - "*.{{ $clusterDomain }}"
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer

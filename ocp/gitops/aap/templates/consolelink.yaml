@@ -1,3 +1,5 @@
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
@@ -7,7 +9,7 @@ metadata:
 spec:
   location: ApplicationMenu
   text: Ansible Automation Platform
-  href: https://aap-aap.{{ .Values.domain }}
+  href: https://aap-aap.{{ $clusterDomain }}
   applicationMenu:
     section: Red Hat Applications
-    imageURL: https://aap-aap.{{ .Values.domain }}/favicon.ico
+    imageURL: https://aap-aap.{{ $clusterDomain }}/favicon.ico

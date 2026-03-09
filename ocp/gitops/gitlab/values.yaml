@@ -1,3 +1,2 @@
 namespace: gitlab-system
-domain: apps.cluster-mp7gr.dynamic.redhatworkshops.io
 chartVersion: "9.9.1"

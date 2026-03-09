@@ -2,5 +2,4 @@ username: ""  # overridden by ApplicationSet
 vaultAddr: http://vault.vault.svc:8200
 buildsNamespace: shared-builds
 gitPath: https://github.com/hfenner
-clusterDomain: apps.cluster-mp7gr.dynamic.redhatworkshops.io
 cheCodeImage: registry.redhat.io/devspaces/code-rhel9@sha256:5cd4fe568b4352bc5ef6ec0b16c3235fe515c2afb86fb076ed435cea65ea2247

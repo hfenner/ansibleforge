@@ -1,3 +1,5 @@
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
@@ -7,7 +9,7 @@ metadata:
 spec:
   location: ApplicationMenu
   text: GitLab
-  href: https://gitlab.{{ .Values.domain }}
+  href: https://gitlab.{{ $clusterDomain }}
   applicationMenu:
     section: Red Hat Applications
-    imageURL: https://gitlab.{{ .Values.domain }}/favicon.ico
+    imageURL: https://gitlab.{{ $clusterDomain }}/favicon.ico

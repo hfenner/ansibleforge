@@ -1,3 +1,5 @@
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 apiVersion: apps.gitlab.com/v1beta1
 kind: GitLab
 metadata:
@@ -11,7 +13,7 @@ spec:
     values:
       global:
         hosts:
-          domain: {{ .Values.domain }}
+          domain: {{ $clusterDomain }}
         appConfig:
           omniauth:
             enabled: true

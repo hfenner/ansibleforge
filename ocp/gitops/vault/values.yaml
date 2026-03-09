@@ -29,7 +29,6 @@ vault:
         }
     route:
       enabled: true
-      host: vault.apps.cluster-mp7gr.dynamic.redhatworkshops.io
     dataStorage:
       enabled: true
       size: 10Gi

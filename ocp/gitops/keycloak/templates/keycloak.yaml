@@ -1,3 +1,5 @@
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 apiVersion: k8s.keycloak.org/v2alpha1
 kind: Keycloak
 metadata:
@@ -8,7 +10,7 @@ metadata:
 spec:
   instances: 1
   hostname:
-    hostname: keycloak.{{ .Values.domain }}
+    hostname: keycloak.{{ $clusterDomain }}
   http:
     httpEnabled: true
   proxy:

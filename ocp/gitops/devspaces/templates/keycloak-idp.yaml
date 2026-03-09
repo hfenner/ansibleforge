@@ -1,3 +1,5 @@
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 {{- $kcSecret := lookup "v1" "Secret" "keycloak" "keycloak-ocp-client-secret" }}
 {{- $clientSecret := "WAITING_FOR_KEYCLOAK_SECRET" }}
 {{- if and $kcSecret $kcSecret.data (index $kcSecret.data "client-secret") }}
@@ -51,7 +53,7 @@ spec:
         clientID: idp-4-ocp
         clientSecret:
           name: keycloak-oidc-secret
-        issuer: https://sso.apps.cluster-mp7gr.dynamic.redhatworkshops.io/realms/sso
+        issuer: https://sso.{{ $clusterDomain }}/realms/sso
         claims:
           preferredUsername:
             - preferred_username

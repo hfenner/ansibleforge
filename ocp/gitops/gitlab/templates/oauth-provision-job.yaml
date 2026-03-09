@@ -1,3 +1,5 @@
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- $clusterDomain := $ingressConfig.spec.domain }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -54,15 +56,15 @@ spec:
           image: registry.redhat.io/openshift4/ose-cli:latest
           env:
             - name: GITLAB_URL
-              value: "https://gitlab.{{ .Values.domain }}"
+              value: "https://gitlab.{{ $clusterDomain }}"
             - name: NAMESPACE
               value: {{ .Values.namespace }}
             - name: DEVSPACES_REDIRECT
-              value: "https://devspaces.{{ .Values.domain }}/api/oauth/callback"
+              value: "https://devspaces.{{ $clusterDomain }}/api/oauth/callback"
             - name: KEYCLOAK_REDIRECT
-              value: "https://keycloak.{{ .Values.domain }}/realms/sso/broker/gitlab/endpoint"
+              value: "https://keycloak.{{ $clusterDomain }}/realms/sso/broker/gitlab/endpoint"
             - name: OCP_OAUTH_REDIRECT
-              value: "https://oauth-openshift.{{ .Values.domain }}/oauth2callback/gitlab"
+              value: "https://oauth-openshift.{{ $clusterDomain }}/oauth2callback/gitlab"
           command:
             - /bin/bash
             - -c

@@ -27,14 +27,12 @@ spec:
               CACERT="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
               NS="{{ .Values.namespace }}"
 
-              # Get root token from secret
-              ROOT_TOKEN=$(curl -sf --cacert "${CACERT}" \
+              # Get root token from secret (.data.root-token is base64-encoded)
+              SECRET_JSON=$(curl -sf --cacert "${CACERT}" \
                 -H "Authorization: Bearer ${SA_TOKEN}" \
-                "${API}/api/v1/namespaces/${NS}/secrets/vault-unseal-keys" \
-                | grep -o '"root-token":"[^"]*"' \
-                | grep -o '"[^"]*"$' \
-                | tr -d '"' \
-                | base64 -d)
+                "${API}/api/v1/namespaces/${NS}/secrets/vault-unseal-keys")
+              ROOT_TOKEN=$(echo "${SECRET_JSON}" \
+                | python3 -c 'import json,sys,base64; d=json.load(sys.stdin); print(base64.b64decode(d["data"]["root-token"]).decode())')
 
               export VAULT_ADDR VAULT_TOKEN="${ROOT_TOKEN}"
 

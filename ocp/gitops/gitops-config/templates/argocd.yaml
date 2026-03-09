@@ -48,12 +48,3 @@ spec:
     route:
       enabled: true
   resourceTrackingMethod: annotation
-  resourceCustomizations: |
-    build.openshift.io/BuildConfig:
-      knownTypeFields:
-        - field: spec
-          type: build.openshift.io/v1/BuildConfigSpec
-    image.openshift.io/ImageStream:
-      knownTypeFields:
-        - field: spec
-          type: image.openshift.io/v1/ImageStreamSpec

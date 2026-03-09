@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-bootstrap
+  namespace: {{ .Values.argocd.namespace }}
+spec:
+  project: {{ .Values.argocd.project }}
+  source:
+    repoURL: {{ .Values.repoURL }}
+    targetRevision: {{ .Values.targetRevision }}
+    path: {{ .Values.bootstrapPath }}
+  destination:
+    server: {{ .Values.argocd.destination.server }}
+  syncPolicy:
+    {{- toYaml .Values.syncPolicy | nindent 4 }}

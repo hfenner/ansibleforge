@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: openshift-gitops
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  resourceHealthChecks:
+    - group: ""
+      kind: PersistentVolumeClaim
+      check: |
+        hs = {}
+        if obj.status == nil or obj.status.phase == nil then
+          hs.status = "Healthy"
+          hs.message = "Waiting for first consumer"
+        elseif obj.status.phase == "Pending" then
+          hs.status = "Healthy"
+          hs.message = "Waiting for first consumer"
+        elseif obj.status.phase == "Bound" then
+          hs.status = "Healthy"
+        else
+          hs.status = "Degraded"
+          hs.message = "PVC is in " .. obj.status.phase .. " phase"
+        end
+        return hs
+  server:
+    route:
+      enabled: true
+  resourceTrackingMethod: annotation
+  resourceCustomizations: |
+    build.openshift.io/BuildConfig:
+      knownTypeFields:
+        - field: spec
+          type: build.openshift.io/v1/BuildConfigSpec
+    image.openshift.io/ImageStream:
+      knownTypeFields:
+        - field: spec
+          type: image.openshift.io/v1/ImageStreamSpec

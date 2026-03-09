@@ -1,67 +1,16 @@
-job:
-  name: ansibleforge-bootstrap
-  ttlSecondsAfterFinished: 600
-  restartPolicy: Never
+repoURL: "https://github.com/hfenner/ansibleforge.git"
+targetRevision: "main"
+bootstrapPath: "ocp/gitops/bootstrap"
 
-namespace:
-  name: ansible-runner
-  create: true
+argocd:
+  namespace: openshift-gitops
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
 
-ansible:
-  repository:
-    url: "https://github.com/hfenner/ansibleforge.git"
-    branch: "main"
-    path: "ocp/ansible"
-
-  playbook: "gitops_deploy.yml"
-
-  requirements:
-    - ansible-core
-    - ansible-runner
-    - kubernetes
-    - openshift
-    - PyYAML
-    - requests
-
-  collections:
-    - kubernetes.core:==3.2.0
-
-  extraVars:
-    gitops_repo_url: "https://github.com/hfenner/ansibleforge.git"
-    gitops_repo_branch: "main"
-
-image:
-  repository: registry.redhat.io/ubi8/python-39
-  tag: latest
-  pullPolicy: IfNotPresent
-
-resources:
-  requests:
-    cpu: "200m"
-    memory: "256Mi"
-  limits:
-    cpu: "1000m"
-    memory: "1Gi"
-
-serviceAccount:
-  name: ansible-runner
-  annotations: {}
-
-rbac:
-  create: true
-  additionalRules:
-    - apiGroups: ["operators.coreos.com"]
-      resources: ["operatorgroups", "subscriptions", "clusterserviceversions", "installplans"]
-      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-    - apiGroups: ["argoproj.io"]
-      resources: ["argocds", "applications"]
-      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-
-syncWave:
-  rbac: "1"
-  job: "2"
-
-# Injected by ocp4_workload_field_content
-deployer:
-  domain: ""
-  apiUrl: ""
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+  syncOptions:
+    - ServerSideApply=true

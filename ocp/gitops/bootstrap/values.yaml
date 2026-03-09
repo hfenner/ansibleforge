@@ -3,6 +3,14 @@ targetRevision: main
 
 components:
 
+  gitops-config:
+    enabled: true
+    syncWave: "0"
+    path: ocp/gitops/gitops-config
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
   vault:
     enabled: true
     syncWave: "1"

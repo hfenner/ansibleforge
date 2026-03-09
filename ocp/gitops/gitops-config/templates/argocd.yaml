@@ -24,6 +24,26 @@ spec:
           hs.message = "PVC is in " .. obj.status.phase .. " phase"
         end
         return hs
+    - group: operators.coreos.com
+      kind: Subscription
+      check: |
+        hs = {}
+        if obj.status ~= nil then
+          if obj.status.state == "AtLatestKnown" then
+            hs.status = "Healthy"
+            hs.message = obj.status.installedCSV or "At latest known"
+          elseif obj.status.state == "UpgradePending" then
+            hs.status = "Progressing"
+            hs.message = "Upgrade pending"
+          else
+            hs.status = "Degraded"
+            hs.message = obj.status.state or "Unknown state"
+          end
+        else
+          hs.status = "Progressing"
+          hs.message = "Waiting for status"
+        end
+        return hs
   server:
     route:
       enabled: true

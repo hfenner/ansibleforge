@@ -1,0 +1,5 @@
+apiVersion: v2
+name: acm
+description: Advanced Cluster Management operator and MultiClusterHub
+type: application
+version: 0.1.0

@@ -1,3 +1,8 @@
+{{- $kcSecret := lookup "v1" "Secret" "keycloak" "keycloak-ocp-client-secret" }}
+{{- $clientSecret := "WAITING_FOR_KEYCLOAK_SECRET" }}
+{{- if and $kcSecret $kcSecret.data (index $kcSecret.data "client-secret") }}
+{{- $clientSecret = index $kcSecret.data "client-secret" | b64dec }}
+{{- end }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -7,7 +12,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 type: Opaque
 stringData:
-  clientSecret: VkkNQT2yb4p7LqPl
+  clientSecret: {{ $clientSecret }}
 ---
 apiVersion: config.openshift.io/v1
 kind: OAuth

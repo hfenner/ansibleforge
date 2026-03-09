@@ -14,3 +14,17 @@ syncPolicy:
     selfHeal: true
   syncOptions:
     - ServerSideApply=true
+
+# Additional values files to overlay on the bootstrap chart
+# e.g., ["values-aws.yaml"] to enable AWS-specific components
+valueFiles: []
+
+# Cluster-specific AWS values (passed through to bootstrap chart as helm parameters)
+aws:
+  efs:
+    filesystemId: ""
+  ingressCerts:
+    clusterDomain: ""
+    acmeEmail: ""
+    route53Region: ""
+    route53HostedZoneID: ""

@@ -12,10 +12,35 @@ metadata:
   {{- end }}
 spec:
   project: default
+  {{- if $app.sources }}
+  sources:
+    {{- range $app.sources }}
+    - repoURL: {{ .repoURL | default $.Values.repoURL }}
+      targetRevision: {{ .targetRevision | default $.Values.targetRevision }}
+      {{- with .path }}
+      path: {{ . }}
+      {{- end }}
+      {{- with .chart }}
+      chart: {{ . }}
+      {{- end }}
+      {{- with .ref }}
+      ref: {{ . }}
+      {{- end }}
+      {{- with .helm }}
+      helm:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+  {{- else }}
   source:
     repoURL: {{ $.Values.repoURL }}
     targetRevision: {{ $.Values.targetRevision }}
     path: {{ $app.path }}
+    {{- with $app.helm }}
+    helm:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
   destination:
     server: https://kubernetes.default.svc
     {{- with $app.destination }}

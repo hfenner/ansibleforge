@@ -1,0 +1,16 @@
+apiVersion: search.open-cluster-management.io/v1alpha1
+kind: Search
+metadata:
+  name: search-v2-operator
+  namespace: open-cluster-management
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  dbStorage:
+    size: {{ .Values.search.storageSize }}
+    storageClassName: {{ .Values.search.storageClassName }}
+  deployments:
+    collector: {}
+    database: {}
+    indexer: {}
+    queryapi: {}

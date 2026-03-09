@@ -1,0 +1,89 @@
+# AWS SNO component overrides
+# Default overlay for GitHub Actions deployment from ansible-devspaces
+#
+# Usage:
+#   helm install ansibleforge-bootstrap helm/ \
+#     --set valueFiles[0]=values-aws.yaml \
+#     --set "components.efs.helm.parameters[0].name=efs.filesystemId" \
+#     --set "components.efs.helm.parameters[0].value=fs-abc123" \
+#     --set "components.ingress-certs.helm.parameters[0].name=clusterDomain" \
+#     --set "components.ingress-certs.helm.parameters[0].value=apps.cluster.example.com" \
+#     --set "components.ingress-certs.helm.parameters[1].name=acme.email" \
+#     --set "components.ingress-certs.helm.parameters[1].value=user@example.com" \
+#     --set "components.ingress-certs.helm.parameters[2].name=route53.region" \
+#     --set "components.ingress-certs.helm.parameters[2].value=us-east-2" \
+#     --set "components.ingress-certs.helm.parameters[3].name=route53.hostedZoneID" \
+#     --set "components.ingress-certs.helm.parameters[3].value=Z3BGLV2DZIFZBI"
+components:
+
+  cert-manager:
+    enabled: true
+    syncWave: "1"
+    path: ocp/gitops/cert-manager
+    retry: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+  efs:
+    enabled: true
+    syncWave: "2"
+    path: ocp/gitops/efs
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+    ignoreDifferences:
+      - group: cloudcredential.openshift.io
+        kind: CredentialsRequest
+        name: openshift-aws-efs-csi-driver
+        managedFieldsManagers:
+          - aws-efs-csi-driver-operator
+
+  ingress-certs:
+    enabled: true
+    syncWave: "3"
+    path: ocp/gitops/ingress-certs
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+  acm:
+    enabled: false
+    syncWave: "1"
+    path: ocp/gitops/acm
+    retry: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+  rhdh:
+    enabled: false
+    syncWave: "2"
+    destination:
+      namespace: rhdh
+    sources:
+      - path: ocp/gitops/rhdh/base
+      - repoURL: https://charts.openshift.io/
+        chart: redhat-developer-hub
+        targetRevision: 1.8.4
+        helm:
+          valueFiles:
+            - $values/ocp/gitops/rhdh/values/values.yaml
+      - ref: values
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    ignoreDifferences:
+      - group: apps
+        kind: StatefulSet
+        jqPathExpressions:
+          - .spec.volumeClaimTemplates
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.data[].remoteRef.conversionStrategy
+          - .spec.data[].remoteRef.decodingStrategy
+          - .spec.data[].remoteRef.metadataPolicy
+          - .spec.target.creationPolicy
+          - .spec.target.deletionPolicy

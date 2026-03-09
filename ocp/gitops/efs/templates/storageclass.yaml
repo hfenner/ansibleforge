@@ -1,0 +1,18 @@
+{{- if .Values.efs.filesystemId }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: efs-sc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: {{ .Values.efs.filesystemId | quote }}
+  directoryPerms: "700"
+  gidRangeStart: "1000"
+  gidRangeEnd: "2000"
+  basePath: /dynamic
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+{{- end }}

@@ -1,0 +1,8 @@
+apiVersion: operator.openshift.io/v1
+kind: ClusterCSIDriver
+metadata:
+  name: efs.csi.aws.com
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  managementState: Managed

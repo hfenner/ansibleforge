@@ -1,0 +1,4 @@
+title = "ansibleforge gitleaks config"
+
+[extend]
+useDefault = true

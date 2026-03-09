@@ -1,3 +1,7 @@
 namespace: keycloak
 domain: apps.cluster-mp7gr.dynamic.redhatworkshops.io
 gitlabDomain: gitlab.apps.cluster-mp7gr.dynamic.redhatworkshops.io
+
+# GitLab as identity broker in Keycloak SSO realm
+gitlab:
+  broker: false

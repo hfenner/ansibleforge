@@ -1,2 +1,8 @@
 # Container-run features (nested containers via podman/buildah) are automatically
 # enabled on OCP 4.20+ (K8s 1.33+) clusters via Kubernetes version detection.
+
+# GitLab integration
+gitlab:
+  scm: false     # Dev Spaces SCM OAuth (clone/push to GitLab from workspaces)
+  login: false   # Direct GitLab IDP on OpenShift login page
+  host: ""

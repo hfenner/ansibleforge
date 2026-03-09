@@ -14,6 +14,22 @@ type: Opaque
 stringData:
   clientSecret: {{ $clientSecret }}
 ---
+{{- if .Values.gitlab.login }}
+{{- $glSecret := lookup "v1" "Secret" "gitlab-system" "gitlab-openshift-oauth" }}
+{{- if and $glSecret $glSecret.data }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitlab-oidc-secret
+  namespace: openshift-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+type: Opaque
+data:
+  clientSecret: {{ index $glSecret.data "secret" }}
+---
+{{- end }}
+{{- end }}
 apiVersion: config.openshift.io/v1
 kind: OAuth
 metadata:
@@ -43,3 +59,23 @@ spec:
             - name
           email:
             - email
+{{- if .Values.gitlab.login }}
+{{- $glSecret := lookup "v1" "Secret" "gitlab-system" "gitlab-openshift-oauth" }}
+{{- if and $glSecret $glSecret.data }}
+    - name: gitlab
+      mappingMethod: claim
+      type: OpenID
+      openID:
+        clientID: {{ index $glSecret.data "id" | b64dec }}
+        clientSecret:
+          name: gitlab-oidc-secret
+        issuer: https://{{ .Values.gitlab.host }}
+        claims:
+          preferredUsername:
+            - preferred_username
+          name:
+            - name
+          email:
+            - email
+{{- end }}
+{{- end }}

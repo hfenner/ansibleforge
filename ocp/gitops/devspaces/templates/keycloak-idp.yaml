@@ -62,6 +62,13 @@ spec:
 {{- if .Values.gitlab.login }}
 {{- $glSecret := lookup "v1" "Secret" "gitlab-system" "gitlab-openshift-oauth" }}
 {{- if and $glSecret $glSecret.data }}
+{{- $gitlabHost := .Values.gitlab.host }}
+{{- if not $gitlabHost }}
+{{- $dns := lookup "config.openshift.io/v1" "DNS" "" "cluster" }}
+{{- if $dns }}
+{{- $gitlabHost = printf "gitlab.apps.%s" $dns.spec.baseDomain }}
+{{- end }}
+{{- end }}
     - name: gitlab
       mappingMethod: claim
       type: OpenID
@@ -69,7 +76,7 @@ spec:
         clientID: {{ index $glSecret.data "id" | b64dec }}
         clientSecret:
           name: gitlab-oidc-secret
-        issuer: https://{{ .Values.gitlab.host }}
+        issuer: https://{{ $gitlabHost }}
         claims:
           preferredUsername:
             - preferred_username

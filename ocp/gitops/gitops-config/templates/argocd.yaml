@@ -44,6 +44,10 @@ spec:
           hs.message = "Waiting for status"
         end
         return hs
+  rbac:
+    policy: |
+      g, admins, role:admin
+    scopes: '[groups]'
   server:
     route:
       enabled: true

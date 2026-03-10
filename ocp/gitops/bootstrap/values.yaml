@@ -16,22 +16,8 @@ components:
       - group: argoproj.io
         kind: ArgoCD
         name: openshift-gitops
-        jqPathExpressions:
-          - .spec.applicationSet
-          - .spec.controller
-          - .spec.grafana
-          - .spec.ha
-          - .spec.imageUpdater
-          - .spec.initialSSHKnownHosts
-          - .spec.monitoring
-          - .spec.notifications
-          - .spec.prometheus
-          - .spec.redis
-          - .spec.repo
-          - .spec.resourceExclusions
-          - .spec.server
-          - .spec.sso
-          - .spec.tls
+        managedFieldsManagers:
+          - openshift-gitops-operator
 
   vault:
     enabled: true

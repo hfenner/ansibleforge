@@ -1,5 +1,8 @@
 {{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
-{{- $clusterDomain := $ingressConfig.spec.domain }}
+{{- $clusterDomain := "" }}
+{{- if and $ingressConfig $ingressConfig.spec }}
+{{- $clusterDomain = $ingressConfig.spec.domain }}
+{{- end }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

@@ -1,6 +1,9 @@
 {{- if .Values.gitlab.broker }}
 {{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
-{{- $clusterDomain := $ingressConfig.spec.domain }}
+{{- $clusterDomain := "" }}
+{{- if and $ingressConfig $ingressConfig.spec }}
+{{- $clusterDomain = $ingressConfig.spec.domain }}
+{{- end }}
 {{- $oauthSecret := lookup "v1" "Secret" "gitlab-system" "gitlab-keycloak-broker-oauth" }}
 {{- if and $oauthSecret $oauthSecret.data }}
 {{- $clientId := index $oauthSecret.data "id" | b64dec }}

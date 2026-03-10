@@ -1,5 +1,8 @@
 {{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
-{{- $clusterDomain := $ingressConfig.spec.domain }}
+{{- $clusterDomain := "" }}
+{{- if and $ingressConfig $ingressConfig.spec }}
+{{- $clusterDomain = $ingressConfig.spec.domain }}
+{{- end }}
 {{- $kcSecret := lookup "v1" "Secret" "keycloak" "keycloak-ocp-client-secret" }}
 {{- $clientSecret := "WAITING_FOR_KEYCLOAK_SECRET" }}
 {{- if and $kcSecret $kcSecret.data (index $kcSecret.data "client-secret") }}

@@ -9,6 +9,10 @@ htpasswd:
   secretStore: aws-secrets-manager
   remoteKey: openshift
 
+# Keycloak OIDC identity provider on OpenShift login page
+keycloak:
+  login: false
+
 # GitLab integration
 gitlab:
   scm: false     # Dev Spaces SCM OAuth (clone/push to GitLab from workspaces)

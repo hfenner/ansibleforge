@@ -5,6 +5,7 @@
 {{- $clusterDomain = $ingressConfig.spec.domain }}
 {{- end }}
 {{- end }}
+{{- if .Values.keycloak.login }}
 {{- $kcSecret := lookup "v1" "Secret" "keycloak" "keycloak-ocp-client-secret" }}
 {{- $clientSecret := "WAITING_FOR_KEYCLOAK_SECRET" }}
 {{- if and $kcSecret $kcSecret.data (index $kcSecret.data "client-secret") }}
@@ -21,6 +22,7 @@ type: Opaque
 stringData:
   clientSecret: {{ $clientSecret }}
 ---
+{{- end }}
 {{- if .Values.gitlab.login }}
 {{- $glSecret := lookup "v1" "Secret" "gitlab-system" "gitlab-openshift-oauth" }}
 {{- if and $glSecret $glSecret.data }}
@@ -45,12 +47,15 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   identityProviders:
+{{- if .Values.htpasswd.enabled }}
     - name: Local
       mappingMethod: claim
       type: HTPasswd
       htpasswd:
         fileData:
           name: htpasswd-secret
+{{- end }}
+{{- if .Values.keycloak.login }}
     - name: rhbk
       mappingMethod: claim
       type: OpenID
@@ -66,6 +71,7 @@ spec:
             - name
           email:
             - email
+{{- end }}
 {{- if .Values.gitlab.login }}
 {{- $glSecret := lookup "v1" "Secret" "gitlab-system" "gitlab-openshift-oauth" }}
 {{- if and $glSecret $glSecret.data }}

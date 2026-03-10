@@ -20,6 +20,9 @@ components:
         - name: aws.enabled
           value: "true"
 
+  keycloak:
+    enabled: true
+
   cert-manager:
     enabled: true
     syncWave: "1"

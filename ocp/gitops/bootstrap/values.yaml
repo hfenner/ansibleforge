@@ -1,5 +1,6 @@
 repoURL: https://github.com/hfenner/ansibleforge.git
 targetRevision: main
+clusterDomain: ""
 
 components:
 

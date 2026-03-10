@@ -15,6 +15,10 @@ syncPolicy:
   syncOptions:
     - ServerSideApply=true
 
+# Cluster apps domain (e.g., apps.fire.sandbox1370.opentlc.com)
+# Auto-detected by bootstrap workflow; passed to all child apps
+clusterDomain: ""
+
 # Additional values files to overlay on the bootstrap chart
 # e.g., ["values-aws.yaml"] to enable AWS-specific components
 valueFiles: []

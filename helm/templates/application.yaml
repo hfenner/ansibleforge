@@ -16,6 +16,10 @@ spec:
         - {{ . }}
         {{- end }}
       parameters:
+        {{- if .Values.clusterDomain }}
+        - name: clusterDomain
+          value: {{ .Values.clusterDomain | quote }}
+        {{- end }}
         {{- if .Values.aws.efs.filesystemId }}
         - name: components.efs.helm.parameters[0].name
           value: efs.filesystemId

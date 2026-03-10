@@ -1,3 +1,5 @@
+clusterDomain: ""
+
 acme:
   email: user@example.com
 

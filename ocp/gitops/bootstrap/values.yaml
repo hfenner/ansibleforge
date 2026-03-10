@@ -17,7 +17,7 @@ components:
         kind: ArgoCD
         name: openshift-gitops
         managedFieldsManagers:
-          - openshift-gitops-operator
+          - manager
 
   vault:
     enabled: true

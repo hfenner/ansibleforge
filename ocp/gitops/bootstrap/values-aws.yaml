@@ -20,12 +20,6 @@ components:
         - name: aws.enabled
           value: "true"
 
-  devspaces:
-    helm:
-      parameters:
-        - name: htpasswd.enabled
-          value: "true"
-
   cert-manager:
     enabled: true
     syncWave: "1"

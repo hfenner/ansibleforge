@@ -19,9 +19,23 @@ spec:
       secret:
         name: keycloak-ocp-client-secret
         key: client-secret
+    SYSADMIN_PASSWORD:
+      secret:
+        name: keycloak-sysadmin-password
+        key: password
   realm:
     realm: sso
     enabled: true
+    users:
+      - username: sysadmin
+        enabled: true
+        firstName: System
+        lastName: Administrator
+        email: sysadmin@example.com
+        credentials:
+          - type: password
+            value: $(SYSADMIN_PASSWORD)
+            temporary: false
     clients:
       - clientId: idp-4-ocp
         enabled: true

@@ -1,0 +1,108 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: aap-license-activation
+  namespace: aap
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: activate
+        image: registry.redhat.io/ansible-automation-platform-26/ee-supported-rhel9:latest
+        env:
+        - name: CONTROLLER_HOST
+          value: "https://aap-aap.{{ .Values.clusterDomain }}"
+        - name: CONTROLLER_USERNAME
+          value: admin
+        - name: CONTROLLER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aap-admin-password
+              key: password
+        - name: CONTROLLER_VERIFY_SSL
+          value: "false"
+        - name: REDHAT_SUB_USER
+          valueFrom:
+            secretKeyRef:
+              name: rhsm-credentials
+              key: username
+        - name: REDHAT_SUB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: rhsm-credentials
+              key: password
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+
+          echo "Waiting for AAP Gateway to be ready..."
+          for i in $(seq 1 60); do
+            if curl -sk -o /dev/null -w '%{http_code}' "${CONTROLLER_HOST}/api/controller/v2/ping/" | grep -q '200'; then
+              echo "AAP Gateway is ready."
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "Timed out waiting for AAP Gateway."
+              exit 1
+            fi
+            echo "Attempt $i/60 - waiting 30s..."
+            sleep 30
+          done
+
+          cat > /tmp/activate.yml <<'PLAYBOOK'
+          - name: Activate AAP subscription
+            hosts: localhost
+            connection: local
+            gather_facts: false
+            vars:
+              aap_hostname: "{{ lookup('env', 'CONTROLLER_HOST') }}"
+              aap_username: "{{ lookup('env', 'CONTROLLER_USERNAME') }}"
+              aap_password: "{{ lookup('env', 'CONTROLLER_PASSWORD') }}"
+              aap_validate_certs: false
+            tasks:
+              - name: Check current license
+                ansible.builtin.uri:
+                  url: "{{ aap_hostname }}/api/controller/v2/config/"
+                  user: "{{ aap_username }}"
+                  password: "{{ aap_password }}"
+                  force_basic_auth: true
+                  validate_certs: false
+                register: config_response
+
+              - name: Skip if already licensed
+                ansible.builtin.meta: end_play
+                when: config_response.json.license_info.valid_key | default(false)
+
+              - name: Look up available subscriptions
+                ansible.controller.subscriptions:
+                  username: "{{ lookup('env', 'REDHAT_SUB_USER') }}"
+                  password: "{{ lookup('env', 'REDHAT_SUB_PASS') }}"
+                  filters:
+                    product_name: "Red Hat Ansible Automation Platform"
+                  controller_host: "{{ aap_hostname }}"
+                  controller_username: "{{ aap_username }}"
+                  controller_password: "{{ aap_password }}"
+                  validate_certs: "{{ aap_validate_certs }}"
+                register: subscription
+
+              - name: Display found subscriptions
+                ansible.builtin.debug:
+                  msg: "Found {{ subscription.subscriptions | length }} subscription(s)"
+
+              - name: Activate subscription
+                ansible.controller.license:
+                  subscription_id: "{{ subscription.subscriptions[0].subscription_id }}"
+                  controller_host: "{{ aap_hostname }}"
+                  controller_username: "{{ aap_username }}"
+                  controller_password: "{{ aap_password }}"
+                  validate_certs: "{{ aap_validate_certs }}"
+          PLAYBOOK
+
+          ansible-playbook /tmp/activate.yml -v

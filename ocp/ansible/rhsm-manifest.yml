@@ -1,0 +1,213 @@
+---
+# Programmatically create an RHSM subscription allocation, attach AAP
+# entitlements, export and download the manifest ZIP.
+#
+# Prerequisites:
+#   - An RHSM offline token (generate at https://access.redhat.com/management/api)
+#
+# Usage:
+#   ansible-playbook ocp/ansible/rhsm-manifest.yml \
+#     -e offline_token="<your-offline-token>" \
+#     -e allocation_name="aap-fire"
+#
+#   # To delete an existing allocation:
+#   ansible-playbook ocp/ansible/rhsm-manifest.yml \
+#     -e offline_token="<your-offline-token>" \
+#     -e allocation_uuid="<uuid>" \
+#     -e state=absent
+
+- name: RHSM subscription manifest
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    rhsm_token_url: "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"
+    rhsm_api_url: "https://api.access.redhat.com/management/v1/allocations"
+    allocation_name: "aap-manifest"
+    sat_version: "sat-6.18"
+    state: present
+    manifest_dir: "{{ playbook_dir }}/manifests"
+    subscription_filter: "Ansible Automation Platform"
+    entitlement_quantity: 1
+    max_export_retries: 30
+    export_retry_delay: 10
+
+  tasks:
+    # --- Authentication ---
+    - name: Obtain RHSM access token
+      ansible.builtin.uri:
+        url: "{{ rhsm_token_url }}"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          grant_type: refresh_token
+          client_id: rhsm-api
+          refresh_token: "{{ offline_token }}"
+        status_code: 200
+      register: token_response
+      no_log: true
+
+    - name: Set access token
+      ansible.builtin.set_fact:
+        access_token: "{{ token_response.json.access_token }}"
+      no_log: true
+
+    # --- Delete flow ---
+    - name: Delete subscription allocation
+      when: state == "absent"
+      block:
+        - name: Delete allocation
+          ansible.builtin.uri:
+            url: "{{ rhsm_api_url }}/{{ allocation_uuid }}?force=true"
+            method: DELETE
+            headers:
+              Authorization: "Bearer {{ access_token }}"
+            status_code: [200, 204]
+
+        - name: Allocation deleted
+          ansible.builtin.debug:
+            msg: "Allocation {{ allocation_uuid }} deleted."
+
+        - name: End play after delete
+          ansible.builtin.meta: end_play
+
+    # --- Create flow ---
+    - name: Check for existing allocation
+      ansible.builtin.uri:
+        url: "{{ rhsm_api_url }}?name={{ allocation_name }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ access_token }}"
+        status_code: 200
+      register: existing_allocations
+
+    - name: Use existing allocation if found
+      ansible.builtin.set_fact:
+        allocation_uuid: "{{ existing_allocations.json.body[0].uuid }}"
+      when: existing_allocations.json.body | length > 0
+
+    - name: Create subscription allocation
+      when: allocation_uuid is not defined
+      block:
+        - name: Create allocation
+          ansible.builtin.uri:
+            url: "{{ rhsm_api_url }}?name={{ allocation_name }}&version={{ sat_version }}"
+            method: POST
+            headers:
+              Authorization: "Bearer {{ access_token }}"
+            status_code: [200, 201]
+          register: create_response
+
+        - name: Set allocation UUID
+          ansible.builtin.set_fact:
+            allocation_uuid: "{{ create_response.json.body.uuid }}"
+
+        - name: Allocation created
+          ansible.builtin.debug:
+            msg: "Created allocation '{{ allocation_name }}' with UUID {{ allocation_uuid }}"
+
+    # --- Attach entitlements ---
+    - name: List available subscription pools
+      ansible.builtin.uri:
+        url: "{{ rhsm_api_url }}/{{ allocation_uuid }}/pools"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ access_token }}"
+        status_code: 200
+      register: pools_response
+
+    - name: Find AAP subscription pool
+      ansible.builtin.set_fact:
+        aap_pool: "{{ pools_response.json.body | selectattr('subscriptionName', 'search', subscription_filter) | first }}"
+
+    - name: Display selected pool
+      ansible.builtin.debug:
+        msg: "Using pool '{{ aap_pool.subscriptionName }}' ({{ aap_pool.id }}) - {{ aap_pool.entitlementsAvailable }} available"
+
+    - name: Check current entitlements on allocation
+      ansible.builtin.uri:
+        url: "{{ rhsm_api_url }}/{{ allocation_uuid }}?include=entitlements"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ access_token }}"
+        status_code: 200
+      register: allocation_details
+
+    - name: Attach entitlement to allocation
+      ansible.builtin.uri:
+        url: "{{ rhsm_api_url }}/{{ allocation_uuid }}/entitlements?pool={{ aap_pool.id }}&quantity={{ entitlement_quantity }}"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ access_token }}"
+        status_code: [200, 201]
+      when: >-
+        allocation_details.json.body.entitlementsAttachedQuantity is not defined or
+        allocation_details.json.body.entitlementsAttachedQuantity == 0
+      register: attach_response
+
+    # --- Export manifest ---
+    - name: Trigger manifest export
+      ansible.builtin.uri:
+        url: "{{ rhsm_api_url }}/{{ allocation_uuid }}/export"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ access_token }}"
+        status_code: 200
+      register: export_trigger
+
+    - name: Set export job ID
+      ansible.builtin.set_fact:
+        export_job_id: "{{ export_trigger.json.body.exportJobID }}"
+
+    - name: Wait for export job to complete
+      ansible.builtin.uri:
+        url: "{{ rhsm_api_url }}/{{ allocation_uuid }}/exportJob/{{ export_job_id }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ access_token }}"
+        status_code: 200
+        return_content: false
+      register: export_status
+      until: export_status.json.body.exportJobStatus | default('') in ['FINISHED', 'ERROR']
+      retries: "{{ max_export_retries }}"
+      delay: "{{ export_retry_delay }}"
+
+    - name: Fail if export errored
+      ansible.builtin.fail:
+        msg: "Manifest export failed: {{ export_status.json }}"
+      when: export_status.json.body.exportJobStatus == 'ERROR'
+
+    - name: Create manifests directory
+      ansible.builtin.file:
+        path: "{{ manifest_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Download manifest
+      ansible.builtin.uri:
+        url: "{{ export_status.json.body.href }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ access_token }}"
+        dest: "{{ manifest_dir }}/{{ allocation_name }}_manifest.zip"
+        status_code: 200
+      register: download_result
+
+    - name: Manifest downloaded
+      ansible.builtin.debug:
+        msg: "Manifest saved to {{ manifest_dir }}/{{ allocation_name }}_manifest.zip ({{ download_result.content_length | default('unknown') }} bytes)"
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "Allocation: {{ allocation_name }} ({{ allocation_uuid }})"
+          - "Subscription: {{ aap_pool.subscriptionName }}"
+          - "Manifest: {{ manifest_dir }}/{{ allocation_name }}_manifest.zip"
+          - ""
+          - "To upload to AAP:"
+          - "  ansible.controller.license:"
+          - "    manifest: {{ manifest_dir }}/{{ allocation_name }}_manifest.zip"
+          - ""
+          - "To delete this allocation later:"
+          - "  ansible-playbook {{ playbook_dir }}/rhsm-manifest.yml -e offline_token=... -e allocation_uuid={{ allocation_uuid }} -e state=absent"

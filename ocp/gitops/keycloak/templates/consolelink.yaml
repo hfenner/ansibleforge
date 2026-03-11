@@ -14,7 +14,7 @@ metadata:
 spec:
   location: ApplicationMenu
   text: Keycloak
-  href: https://sso.{{ $clusterDomain }}
+  href: https://keycloak.{{ $clusterDomain }}
   applicationMenu:
     section: Red Hat Applications
-    imageURL: https://sso.{{ $clusterDomain }}/favicon.ico
+    imageURL: https://keycloak.{{ $clusterDomain }}/favicon.ico

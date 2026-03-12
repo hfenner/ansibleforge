@@ -1,0 +1,40 @@
+{{- if .Values.github.broker }}
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: KeycloakRealmImport
+metadata:
+  name: sso-realm-github-idp
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  keycloakCRName: keycloak
+  placeholders:
+    GITHUB_CLIENT_ID:
+      secret:
+        name: github-app-credentials
+        key: client-id
+    GITHUB_CLIENT_SECRET:
+      secret:
+        name: github-app-credentials
+        key: client-secret
+  realm:
+    realm: sso
+    identityProviders:
+      - alias: github
+        providerId: github
+        enabled: true
+        trustEmail: true
+        firstBrokerLoginFlowAlias: first broker login
+        config:
+          clientId: $(GITHUB_CLIENT_ID)
+          clientSecret: $(GITHUB_CLIENT_SECRET)
+          defaultScope: user:email
+          syncMode: FORCE
+    identityProviderMappers:
+      - name: github-username
+        identityProviderAlias: github
+        identityProviderMapper: github-username-idp-mapper
+        config:
+          syncMode: INHERIT
+          template: "${ALIAS}.${CLAIM.login}"
+{{- end }}

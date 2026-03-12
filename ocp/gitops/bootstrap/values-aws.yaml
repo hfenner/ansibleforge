@@ -22,6 +22,10 @@ components:
 
   keycloak:
     enabled: true
+    helm:
+      parameters:
+        - name: github.broker
+          value: "true"
 
   cert-manager:
     enabled: true

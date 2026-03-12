@@ -36,7 +36,7 @@ spec:
     repoURL: {{ $.Values.repoURL }}
     targetRevision: {{ $.Values.targetRevision }}
     path: {{ $app.path }}
-    {{- if or $app.helm $.Values.clusterDomain }}
+    {{- if or $app.helm $.Values.clusterDomain $.Values.clusterName }}
     helm:
       {{- with $app.helm }}
       {{- if .valueFiles }}
@@ -48,6 +48,10 @@ spec:
         {{- if $.Values.clusterDomain }}
         - name: clusterDomain
           value: {{ $.Values.clusterDomain | quote }}
+        {{- end }}
+        {{- if $.Values.clusterName }}
+        - name: clusterName
+          value: {{ $.Values.clusterName | quote }}
         {{- end }}
         {{- with $app.helm }}
         {{- range .parameters }}

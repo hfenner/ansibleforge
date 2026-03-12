@@ -1,4 +1,5 @@
 clusterDomain: ""
+clusterName: ""
 namespace: keycloak
 
 # GitLab as identity broker in Keycloak SSO realm

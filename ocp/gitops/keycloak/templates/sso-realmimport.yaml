@@ -54,7 +54,7 @@ spec:
         email: sysadmin@example.com
         credentials:
           - type: password
-            value: $(SYSADMIN_PASSWORD)
+            value: ${SYSADMIN_PASSWORD}
             temporary: false
     clients:
       - clientId: idp-4-ocp
@@ -63,7 +63,7 @@ spec:
         publicClient: false
         standardFlowEnabled: true
         directAccessGrantsEnabled: false
-        secret: $(OCP_CLIENT_SECRET)
+        secret: ${OCP_CLIENT_SECRET}
         redirectUris:
           - https://oauth-openshift.{{ $clusterDomain }}/*
         webOrigins:
@@ -139,8 +139,8 @@ spec:
         trustEmail: true
         firstBrokerLoginFlowAlias: first broker login
         config:
-          clientId: $(GITLAB_BROKER_CLIENT_ID)
-          clientSecret: $(GITLAB_BROKER_CLIENT_SECRET)
+          clientId: ${GITLAB_BROKER_CLIENT_ID}
+          clientSecret: ${GITLAB_BROKER_CLIENT_SECRET}
           authorizationUrl: https://gitlab.{{ $clusterDomain }}/oauth/authorize
           tokenUrl: https://gitlab.{{ $clusterDomain }}/oauth/token
           userInfoUrl: https://gitlab.{{ $clusterDomain }}/oauth/userinfo
@@ -157,8 +157,8 @@ spec:
         trustEmail: true
         firstBrokerLoginFlowAlias: first broker login
         config:
-          clientId: $(GITHUB_CLIENT_ID)
-          clientSecret: $(GITHUB_CLIENT_SECRET)
+          clientId: ${GITHUB_CLIENT_ID}
+          clientSecret: ${GITHUB_CLIENT_SECRET}
           defaultScope: user:email
           syncMode: FORCE
       {{- end }}

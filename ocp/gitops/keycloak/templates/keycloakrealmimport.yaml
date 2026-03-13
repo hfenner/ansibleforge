@@ -29,7 +29,7 @@ spec:
       publicClient: false
       standardFlowEnabled: true
       directAccessGrantsEnabled: false
-      secret: $(GITLAB_CLIENT_SECRET)
+      secret: ${GITLAB_CLIENT_SECRET}
       redirectUris:
       - https://gitlab.{{ $clusterDomain }}/users/auth/openid_connect/callback
       webOrigins:

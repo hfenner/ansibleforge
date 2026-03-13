@@ -114,6 +114,61 @@ spec:
               id.token.claim: "true"
               access.token.claim: "true"
               userinfo.token.claim: "true"
+      {{- if and .Values.aws.saml .Values.aws.accountId }}
+      - clientId: "urn:amazon:webservices"
+        name: "Amazon Web Services"
+        enabled: true
+        protocol: saml
+        publicClient: false
+        frontchannelLogout: true
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        authenticationFlowBindingOverrides:
+          browser: aws-admin-browser
+        attributes:
+          saml.authnstatement: "true"
+          saml.server.signature: "true"
+          saml.force.post.binding: "true"
+          saml.multivalued.roles: "false"
+          saml_assertion_consumer_url_post: "https://signin.aws.amazon.com/saml"
+          saml_single_logout_service_url_redirect: "https://signin.aws.amazon.com/saml"
+          saml.signing.certificate: ""
+        redirectUris:
+          - "https://signin.aws.amazon.com/saml"
+        protocolMappers:
+          - name: Session Role
+            protocol: saml
+            protocolMapper: saml-role-list-mapper
+            config:
+              attribute.nameformat: Basic
+              attribute.name: "https://aws.amazon.com/SAML/Attributes/Role"
+              friendly.name: "Session Role"
+              single: "true"
+          - name: Session Duration
+            protocol: saml
+            protocolMapper: saml-hardcode-attribute-mapper
+            config:
+              attribute.nameformat: Basic
+              attribute.name: "https://aws.amazon.com/SAML/Attributes/SessionDuration"
+              friendly.name: "Session Duration"
+              attribute.value: "28800"
+          - name: Session Name
+            protocol: saml
+            protocolMapper: saml-user-property-mapper
+            config:
+              attribute.nameformat: Basic
+              attribute.name: "https://aws.amazon.com/SAML/Attributes/RoleSessionName"
+              friendly.name: "Session Name"
+              user.attribute: email
+          - name: AWS Role
+            protocol: saml
+            protocolMapper: saml-hardcode-attribute-mapper
+            config:
+              attribute.nameformat: Basic
+              attribute.name: "https://aws.amazon.com/SAML/Attributes/Role"
+              friendly.name: "AWS Role"
+              attribute.value: "arn:aws:iam::{{ .Values.aws.accountId }}:role/KeycloakAdminAccess,arn:aws:iam::{{ .Values.aws.accountId }}:saml-provider/Keycloak"
+      {{- end }}
     groups:
       - name: admins
       {{- if and .Values.github.broker .Values.github.mapper .Values.github.org }}
@@ -192,8 +247,9 @@ spec:
       {{- end }}
       {{- end }}
     {{- end }}
-    {{- if and .Values.github.broker .Values.github.mapper .Values.github.org }}
+    {{- if or (and .Values.github.broker .Values.github.mapper .Values.github.org) .Values.aws.saml }}
     authenticationFlows:
+      {{- if and .Values.github.broker .Values.github.mapper .Values.github.org }}
       - alias: github-org-check
         description: "Deny users not in the GitHub org"
         providerId: basic-flow
@@ -227,4 +283,58 @@ spec:
               alias: "Org access denied"
               config:
                 errorMessage: "Access denied. You must be a member of the {{ .Values.github.org }} GitHub organization."
+      {{- end }}
+      {{- if .Values.aws.saml }}
+      - alias: aws-admin-browser
+        description: "Browser flow restricted to admins for AWS console access"
+        providerId: basic-flow
+        topLevel: true
+        builtIn: false
+        authenticationExecutions:
+          - authenticator: auth-cookie
+            authenticatorFlow: false
+            requirement: ALTERNATIVE
+            priority: 0
+          - authenticatorFlow: true
+            flowAlias: "AWS admin forms"
+            requirement: ALTERNATIVE
+            priority: 1
+      - alias: "AWS admin forms"
+        description: "Username/password + admin check for AWS"
+        providerId: basic-flow
+        topLevel: false
+        builtIn: false
+        authenticationExecutions:
+          - authenticator: auth-username-password-form
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 0
+          - authenticatorFlow: true
+            flowAlias: "AWS admin gate"
+            requirement: CONDITIONAL
+            priority: 1
+      - alias: "AWS admin gate"
+        description: "Deny non-admin users"
+        providerId: basic-flow
+        topLevel: false
+        builtIn: false
+        authenticationExecutions:
+          - authenticator: conditional-user-role
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 0
+            authenticatorConfig:
+              alias: "Not in admins"
+              config:
+                condUserRole: "admins"
+                negate: "true"
+          - authenticator: deny-access-authenticator
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 1
+            authenticatorConfig:
+              alias: "AWS access denied"
+              config:
+                errorMessage: "Access denied. Only SSO admins can access the AWS Console."
+      {{- end }}
     {{- end }}

@@ -15,3 +15,8 @@ github:
   org: ""
   # GitHub team slug for admin group mapping (optional, narrows org to team)
   team: ""
+
+# AWS SAML federation (admins-only AWS Console access)
+aws:
+  saml: false
+  accountId: ""

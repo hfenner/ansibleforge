@@ -41,6 +41,10 @@ components:
           value: infrabuildxyz
         - name: github.team
           value: admins
+        - name: aws.saml
+          value: "true"
+        - name: aws.accountId
+          value: "171109435201"
 
   cert-manager:
     enabled: true

@@ -1,0 +1,322 @@
+{{- if and .Values.aws.saml .Values.aws.accountId }}
+{{- $clusterDomain := .Values.clusterDomain }}
+{{- if not $clusterDomain }}
+{{- $ingressConfig := lookup "config.openshift.io/v1" "Ingress" "" "cluster" }}
+{{- if and $ingressConfig $ingressConfig.spec }}
+{{- $clusterDomain = $ingressConfig.spec.domain }}
+{{- end }}
+{{- end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: aws-saml-config
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: configure-aws-saml
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command: ["/bin/sh", "-c"]
+          env:
+            - name: KEYCLOAK_URL
+              value: "https://keycloak.{{ $clusterDomain }}"
+            - name: AWS_ACCOUNT_ID
+              value: {{ .Values.aws.accountId | quote }}
+            - name: KC_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-initial-admin
+                  key: username
+            - name: KC_ADMIN_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-initial-admin
+                  key: password
+          args:
+            - |
+              set -e
+
+              echo "=== Obtaining admin token ==="
+              TOKEN=$(curl -sf -k "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+                -d "client_id=admin-cli" \
+                -d "username=${KC_ADMIN_USER}" \
+                -d "password=${KC_ADMIN_PASS}" \
+                -d "grant_type=password" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+              AUTH="Authorization: Bearer ${TOKEN}"
+
+              REALM="sso"
+
+              # --- Ensure aws-admin-browser auth flow ---
+              ensure_aws_admin_flow() {
+                local flow_exists
+                flow_exists=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows" \
+                  | python3 -c "
+              import sys,json
+              flows=json.load(sys.stdin)
+              matches=[f for f in flows if f['alias']=='aws-admin-browser']
+              print('yes' if matches else '')
+              ")
+
+                if [ -n "$flow_exists" ]; then
+                  echo "  aws-admin-browser flow already exists"
+                  return
+                fi
+
+                echo "  Creating aws-admin-browser flow..."
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"alias": "aws-admin-browser", "providerId": "basic-flow", "topLevel": true, "builtIn": false, "description": "Browser flow restricted to admins for AWS console access"}'
+
+                # Add cookie authenticator (ALTERNATIVE)
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions/execution" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"provider": "auth-cookie"}'
+
+                # Add forms subflow (ALTERNATIVE)
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions/flow" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"alias": "AWS admin forms", "type": "basic-flow", "provider": "registration-page-form"}'
+
+                # Set executions to ALTERNATIVE
+                local execs cookie_id forms_id
+                execs=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions")
+                cookie_id=$(echo "$execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e.get('providerId')=='auth-cookie'))")
+                forms_id=$(echo "$execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e.get('displayName')=='AWS admin forms'))")
+
+                curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"id\": \"${cookie_id}\", \"requirement\": \"ALTERNATIVE\", \"providerId\": \"auth-cookie\"}"
+                curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"id\": \"${forms_id}\", \"requirement\": \"ALTERNATIVE\", \"displayName\": \"AWS admin forms\"}"
+
+                # Add username-password to forms subflow
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions/execution" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"provider": "auth-username-password-form"}'
+
+                # Add conditional gate subflow
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions/flow" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"alias": "AWS admin gate", "type": "basic-flow", "provider": "registration-page-form"}'
+
+                # Set username-password to REQUIRED, gate to CONDITIONAL
+                local form_execs upw_id gate_id
+                form_execs=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions")
+                upw_id=$(echo "$form_execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e.get('providerId')=='auth-username-password-form'))")
+                gate_id=$(echo "$form_execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e.get('displayName')=='AWS admin gate'))")
+
+                curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"id\": \"${upw_id}\", \"requirement\": \"REQUIRED\", \"providerId\": \"auth-username-password-form\"}"
+                curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"id\": \"${gate_id}\", \"requirement\": \"CONDITIONAL\", \"displayName\": \"AWS admin gate\"}"
+
+                # Add condition (not in admins) and deny to gate subflow
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20gate/executions/execution" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"provider": "conditional-user-role"}'
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20gate/executions/execution" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"provider": "deny-access-authenticator"}'
+
+                local gate_execs cond_id deny_id
+                gate_execs=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20gate/executions")
+                cond_id=$(echo "$gate_execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e['providerId']=='conditional-user-role'))")
+                deny_id=$(echo "$gate_execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e['providerId']=='deny-access-authenticator'))")
+
+                curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20gate/executions" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"id\": \"${cond_id}\", \"requirement\": \"REQUIRED\", \"providerId\": \"conditional-user-role\"}"
+                curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20gate/executions" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"id\": \"${deny_id}\", \"requirement\": \"REQUIRED\", \"providerId\": \"deny-access-authenticator\"}"
+
+                # Configure condition and deny
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/executions/${cond_id}/config" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"alias": "Not in admins", "config": {"condUserRole": "admins", "negate": "true"}}'
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/executions/${deny_id}/config" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"alias": "AWS access denied", "config": {"errorMessage": "Access denied. Only SSO admins can access the AWS Console."}}'
+
+                echo "  aws-admin-browser flow created"
+              }
+
+              # --- Ensure AWS SAML client ---
+              ensure_aws_saml_client() {
+                local existing
+                existing=$(curl -sf -k -o /dev/null -w "%{http_code}" \
+                  -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=urn%3Aamazon%3Awebservices" 2>/dev/null)
+
+                local client_exists
+                client_exists=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=urn%3Aamazon%3Awebservices" \
+                  | python3 -c "import sys,json; clients=json.load(sys.stdin); print(clients[0]['id'] if clients else '')")
+
+                # Get the aws-admin-browser flow ID
+                local flow_id
+                flow_id=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows" \
+                  | python3 -c "
+              import sys,json
+              flows=json.load(sys.stdin)
+              matches=[f['id'] for f in flows if f['alias']=='aws-admin-browser']
+              print(matches[0] if matches else '')
+              ")
+
+                local client_payload="{
+                  \"clientId\": \"urn:amazon:webservices\",
+                  \"name\": \"Amazon Web Services\",
+                  \"enabled\": true,
+                  \"protocol\": \"saml\",
+                  \"publicClient\": false,
+                  \"frontchannelLogout\": true,
+                  \"standardFlowEnabled\": true,
+                  \"directAccessGrantsEnabled\": false,
+                  \"authenticationFlowBindingOverrides\": {
+                    \"browser\": \"${flow_id}\"
+                  },
+                  \"attributes\": {
+                    \"saml.authnstatement\": \"true\",
+                    \"saml.server.signature\": \"true\",
+                    \"saml.force.post.binding\": \"true\",
+                    \"saml.multivalued.roles\": \"false\",
+                    \"saml_assertion_consumer_url_post\": \"https://signin.aws.amazon.com/saml\",
+                    \"saml_single_logout_service_url_redirect\": \"https://signin.aws.amazon.com/saml\"
+                  },
+                  \"redirectUris\": [\"https://signin.aws.amazon.com/saml\"]
+                }"
+
+                if [ -n "$client_exists" ]; then
+                  echo "  AWS SAML client exists (${client_exists}), updating..."
+                  curl -sf -k -X PUT \
+                    "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${client_exists}" \
+                    -H "${AUTH}" -H "Content-Type: application/json" \
+                    -d "$client_payload"
+                else
+                  echo "  Creating AWS SAML client..."
+                  curl -sf -k -X POST \
+                    "${KEYCLOAK_URL}/admin/realms/${REALM}/clients" \
+                    -H "${AUTH}" -H "Content-Type: application/json" \
+                    -d "$client_payload"
+                  client_exists=$(curl -sf -k -H "${AUTH}" \
+                    "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=urn%3Aamazon%3Awebservices" \
+                    | python3 -c "import sys,json; clients=json.load(sys.stdin); print(clients[0]['id'] if clients else '')")
+                fi
+
+                echo "  Configuring SAML protocol mappers..."
+
+                upsert_saml_mapper() {
+                  local name="$1" payload="$2"
+                  local mappers existing_id
+                  mappers=$(curl -sf -k -H "${AUTH}" \
+                    "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${client_exists}/protocol-mappers/models")
+                  existing_id=$(echo "$mappers" | python3 -c "
+              import sys,json
+              mappers=json.load(sys.stdin)
+              matches=[m['id'] for m in mappers if m['name']=='${name}']
+              print(matches[0] if matches else '')
+              " 2>/dev/null)
+
+                  if [ -n "$existing_id" ]; then
+                    echo "    Updating mapper: ${name}"
+                    curl -sf -k -X PUT \
+                      "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${client_exists}/protocol-mappers/models/${existing_id}" \
+                      -H "${AUTH}" -H "Content-Type: application/json" \
+                      -d "$(echo "${payload}" | python3 -c "import sys,json; d=json.load(sys.stdin); d['id']='${existing_id}'; print(json.dumps(d))")"
+                  else
+                    echo "    Creating mapper: ${name}"
+                    curl -sf -k -X POST \
+                      "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${client_exists}/protocol-mappers/models" \
+                      -H "${AUTH}" -H "Content-Type: application/json" \
+                      -d "$payload"
+                  fi
+                }
+
+                upsert_saml_mapper "Session Role" '{
+                  "name": "Session Role",
+                  "protocol": "saml",
+                  "protocolMapper": "saml-role-list-mapper",
+                  "config": {
+                    "attribute.nameformat": "Basic",
+                    "attribute.name": "https://aws.amazon.com/SAML/Attributes/Role",
+                    "friendly.name": "Session Role",
+                    "single": "true"
+                  }
+                }'
+
+                upsert_saml_mapper "Session Duration" '{
+                  "name": "Session Duration",
+                  "protocol": "saml",
+                  "protocolMapper": "saml-hardcode-attribute-mapper",
+                  "config": {
+                    "attribute.nameformat": "Basic",
+                    "attribute.name": "https://aws.amazon.com/SAML/Attributes/SessionDuration",
+                    "friendly.name": "Session Duration",
+                    "attribute.value": "28800"
+                  }
+                }'
+
+                upsert_saml_mapper "Session Name" '{
+                  "name": "Session Name",
+                  "protocol": "saml",
+                  "protocolMapper": "saml-user-property-mapper",
+                  "config": {
+                    "attribute.nameformat": "Basic",
+                    "attribute.name": "https://aws.amazon.com/SAML/Attributes/RoleSessionName",
+                    "friendly.name": "Session Name",
+                    "user.attribute": "email"
+                  }
+                }'
+
+                upsert_saml_mapper "AWS Role" "{
+                  \"name\": \"AWS Role\",
+                  \"protocol\": \"saml\",
+                  \"protocolMapper\": \"saml-hardcode-attribute-mapper\",
+                  \"config\": {
+                    \"attribute.nameformat\": \"Basic\",
+                    \"attribute.name\": \"https://aws.amazon.com/SAML/Attributes/Role\",
+                    \"friendly.name\": \"AWS Role\",
+                    \"attribute.value\": \"arn:aws:iam::${AWS_ACCOUNT_ID}:role/KeycloakAdminAccess,arn:aws:iam::${AWS_ACCOUNT_ID}:saml-provider/Keycloak\"
+                  }
+                }"
+
+                echo "  AWS SAML client configured"
+              }
+
+              echo ""
+              echo "=== Configuring AWS SAML federation ==="
+              ensure_aws_admin_flow
+              ensure_aws_saml_client
+              echo ""
+              echo "=== AWS SAML configuration complete ==="
+{{- end }}

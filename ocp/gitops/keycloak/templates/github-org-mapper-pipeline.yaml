@@ -46,9 +46,9 @@ spec:
         - name: output
           workspace: source
       params:
-        - name: url
+        - name: URL
           value: $(params.git-url)
-        - name: revision
+        - name: REVISION
           value: $(params.git-revision)
     - name: maven-build
       runAfter:
@@ -66,10 +66,10 @@ spec:
         - name: source
           workspace: source
       params:
+        - name: SUBDIRECTORY
+          value: keycloak-extensions/github-org-mapper
         - name: GOALS
           value:
-            - -f
-            - keycloak-extensions/github-org-mapper/pom.xml
             - clean
             - package
             - -DskipTests

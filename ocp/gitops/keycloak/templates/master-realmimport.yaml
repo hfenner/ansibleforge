@@ -1,4 +1,4 @@
-{{- if .Values.github.broker }}
+{{- if and .Values.github.broker .Values.github.mapper .Values.github.org }}
 apiVersion: k8s.keycloak.org/v2alpha1
 kind: KeycloakRealmImport
 metadata:
@@ -20,16 +20,21 @@ spec:
   realm:
     realm: master
     enabled: true
+    groups:
+      - name: admins
+        realmRoles:
+          - admin
     identityProviders:
       - alias: github
         providerId: github
         enabled: true
         trustEmail: true
+        storeToken: true
         firstBrokerLoginFlowAlias: first broker login
         config:
           clientId: ${GITHUB_CLIENT_ID}
           clientSecret: ${GITHUB_CLIENT_SECRET}
-          defaultScope: "user:email"
+          defaultScope: "user:email read:org"
           syncMode: FORCE
     identityProviderMappers:
       - name: github-username
@@ -38,4 +43,14 @@ spec:
         config:
           syncMode: INHERIT
           template: "${ALIAS}.${CLAIM.login}"
+      - name: github-org-admins
+        identityProviderAlias: github
+        identityProviderMapper: github-org-to-group-mapper
+        config:
+          syncMode: FORCE
+          github.org: {{ .Values.github.org }}
+          {{- if .Values.github.team }}
+          github.team: {{ .Values.github.team }}
+          {{- end }}
+          keycloak.group: admins
 {{- end }}

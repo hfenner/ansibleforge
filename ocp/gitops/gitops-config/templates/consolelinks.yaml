@@ -3,19 +3,14 @@
 {{- if and $ingressConfig $ingressConfig.spec }}
 {{- $clusterDomain = $ingressConfig.spec.domain }}
 {{- end }}
-{{- $infra := lookup "config.openshift.io/v1" "Infrastructure" "" "cluster" }}
-{{- $awsRegion := "" }}
-{{- if and $infra $infra.status $infra.status.platformStatus $infra.status.platformStatus.aws }}
-{{- $awsRegion = $infra.status.platformStatus.aws.region }}
-{{- end }}
-{{- if $awsRegion }}
+{{- if $clusterDomain }}
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
   name: aws-console
 spec:
   location: ApplicationMenu
-  text: AWS Console ({{ $awsRegion }})
+  text: AWS Console (SSO)
   href: https://keycloak.{{ $clusterDomain }}/realms/sso/protocol/saml/clients/urn%3Aamazon%3Awebservices
   applicationMenu:
     section: Cloud Provider

@@ -131,6 +131,8 @@ spec:
           saml.multivalued.roles: "false"
           saml_assertion_consumer_url_post: "https://signin.aws.amazon.com/saml"
           saml_single_logout_service_url_redirect: "https://signin.aws.amazon.com/saml"
+          saml_idp_initiated_sso_url_name: "urn:amazon:webservices"
+          saml_idp_initiated_sso_relay_state: "https://console.aws.amazon.com"
           saml.signing.certificate: ""
         redirectUris:
           - "https://signin.aws.amazon.com/saml"

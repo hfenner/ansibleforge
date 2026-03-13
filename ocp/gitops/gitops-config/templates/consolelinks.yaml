@@ -1,0 +1,23 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: ansibleforge-repo
+spec:
+  location: ApplicationMenu
+  text: AnsibleForge (GitHub)
+  href: https://github.com/hfenner/ansibleforge
+  applicationMenu:
+    section: AnsibleForge
+    imageURL: https://github.githubassets.com/favicons/favicon.svg
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: ansibleforge-docs
+spec:
+  location: ApplicationMenu
+  text: AnsibleForge Docs
+  href: https://hfenner.github.io/ansibleforge/
+  applicationMenu:
+    section: AnsibleForge
+    imageURL: https://github.githubassets.com/favicons/favicon.svg

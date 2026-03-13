@@ -197,6 +197,9 @@ spec:
         config:
           syncMode: FORCE
           github.org: {{ .Values.github.org }}
+          {{- if .Values.github.team }}
+          github.team: {{ .Values.github.team }}
+          {{- end }}
           keycloak.group: admins
       {{- end }}
       {{- end }}

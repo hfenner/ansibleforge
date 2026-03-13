@@ -12,12 +12,9 @@ import org.keycloak.models.UserModel;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.social.github.GitHubIdentityProviderFactory;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -26,6 +23,7 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
 
     public static final String PROVIDER_ID = "github-org-to-group-mapper";
     private static final String CONFIG_ORG = "github.org";
+    private static final String CONFIG_TEAM = "github.team";
     private static final String CONFIG_GROUP = "keycloak.group";
     private static final String GITHUB_API_BASE = "https://api.github.com";
 
@@ -35,9 +33,16 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
         ProviderConfigProperty orgProperty = new ProviderConfigProperty();
         orgProperty.setName(CONFIG_ORG);
         orgProperty.setLabel("GitHub Organization");
-        orgProperty.setHelpText("GitHub organization name. Users who are members of this org will be added to the specified Keycloak group.");
+        orgProperty.setHelpText("GitHub organization name. Required.");
         orgProperty.setType(ProviderConfigProperty.STRING_TYPE);
         CONFIG_PROPERTIES.add(orgProperty);
+
+        ProviderConfigProperty teamProperty = new ProviderConfigProperty();
+        teamProperty.setName(CONFIG_TEAM);
+        teamProperty.setLabel("GitHub Team (optional)");
+        teamProperty.setHelpText("GitHub team slug within the organization. If set, only members of this team are mapped. If empty, all org members are mapped.");
+        teamProperty.setType(ProviderConfigProperty.STRING_TYPE);
+        CONFIG_PROPERTIES.add(teamProperty);
 
         ProviderConfigProperty groupProperty = new ProviderConfigProperty();
         groupProperty.setName(CONFIG_GROUP);
@@ -64,12 +69,12 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
 
     @Override
     public String getDisplayType() {
-        return "GitHub Organization to Group";
+        return "GitHub Organization/Team to Group";
     }
 
     @Override
     public String getHelpText() {
-        return "Maps GitHub organization membership to a Keycloak group. Requires 'read:org' scope on the GitHub identity provider.";
+        return "Maps GitHub organization or team membership to a Keycloak group. Requires 'read:org' scope on the GitHub identity provider.";
     }
 
     @Override
@@ -100,6 +105,7 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
                                   IdentityProviderMapperModel mapperModel,
                                   BrokeredIdentityContext context) {
         String orgName = mapperModel.getConfig().get(CONFIG_ORG);
+        String teamSlug = mapperModel.getConfig().get(CONFIG_TEAM);
         String groupPath = mapperModel.getConfig().get(CONFIG_GROUP);
 
         if (orgName == null || orgName.isBlank() || groupPath == null || groupPath.isBlank()) {
@@ -127,26 +133,34 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
             return;
         }
 
-        boolean isMember = checkOrgMembership(accessToken, orgName, username);
+        boolean isMember;
+        if (teamSlug != null && !teamSlug.isBlank()) {
+            isMember = checkTeamMembership(accessToken, orgName, teamSlug, username);
+        } else {
+            isMember = checkOrgMembership(accessToken, orgName, username);
+        }
 
         if (isMember) {
             user.joinGroup(group);
+            context.getMapperAssignedGroups().add(group);
         } else {
-            // Only remove if this mapper previously assigned the group
             Set<GroupModel> assignedGroups = context.getMapperAssignedGroups();
             if (assignedGroups != null && assignedGroups.contains(group)) {
                 user.leaveGroup(group);
             }
         }
-
-        if (isMember) {
-            context.getMapperAssignedGroups().add(group);
-        }
     }
 
     private boolean checkOrgMembership(String accessToken, String orgName, String username) {
+        // GET /orgs/{org}/members/{username} → 204 = member, 404 = not a member
+        return checkGitHubApi(accessToken,
+                GITHUB_API_BASE + "/orgs/" + orgName + "/members/" + username);
+    }
+
+    private boolean checkTeamMembership(String accessToken, String orgName, String teamSlug, String username) {
+        // GET /orgs/{org}/teams/{team_slug}/memberships/{username} → 200 = member, 404 = not a member
         try {
-            URI uri = URI.create(GITHUB_API_BASE + "/orgs/" + orgName + "/members/" + username);
+            URI uri = URI.create(GITHUB_API_BASE + "/orgs/" + orgName + "/teams/" + teamSlug + "/memberships/" + username);
             HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Authorization", "Bearer " + accessToken);
@@ -157,7 +171,26 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
             int responseCode = conn.getResponseCode();
             conn.disconnect();
 
-            // 204 = member, 404 = not a member, 302 = requester is not org member
+            // 200 with state=active means active member
+            return responseCode == 200;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean checkGitHubApi(String accessToken, String url) {
+        try {
+            URI uri = URI.create(url);
+            HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+            conn.setRequestProperty("Accept", "application/vnd.github+json");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+
+            int responseCode = conn.getResponseCode();
+            conn.disconnect();
+
             return responseCode == 204;
         } catch (Exception e) {
             return false;

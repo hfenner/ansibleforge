@@ -13,3 +13,5 @@ github:
   mapper: false
   # GitHub organization for admin group mapping (requires mapper: true)
   org: ""
+  # GitHub team slug for admin group mapping (optional, narrows org to team)
+  team: ""

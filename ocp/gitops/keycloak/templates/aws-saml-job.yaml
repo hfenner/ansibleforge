@@ -306,7 +306,7 @@ spec:
                     \"attribute.nameformat\": \"Basic\",
                     \"attribute.name\": \"https://aws.amazon.com/SAML/Attributes/Role\",
                     \"friendly.name\": \"AWS Role\",
-                    \"attribute.value\": \"arn:aws:iam::${AWS_ACCOUNT_ID}:role/KeycloakAdminAccess,arn:aws:iam::${AWS_ACCOUNT_ID}:saml-provider/Keycloak\"
+                    \"attribute.value\": \"arn:aws:iam::${AWS_ACCOUNT_ID}:role/KeycloakAdminAccess,arn:aws:iam::${AWS_ACCOUNT_ID}:saml-provider/keycloak-sso\"
                   }
                 }"
 

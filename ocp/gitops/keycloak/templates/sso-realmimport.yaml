@@ -167,7 +167,7 @@ spec:
               attribute.nameformat: Basic
               attribute.name: "https://aws.amazon.com/SAML/Attributes/Role"
               friendly.name: "AWS Role"
-              attribute.value: "arn:aws:iam::{{ .Values.aws.accountId }}:role/KeycloakAdminAccess,arn:aws:iam::{{ .Values.aws.accountId }}:saml-provider/Keycloak"
+              attribute.value: "arn:aws:iam::{{ .Values.aws.accountId }}:role/KeycloakAdminAccess,arn:aws:iam::{{ .Values.aws.accountId }}:saml-provider/keycloak-sso"
       {{- end }}
     groups:
       - name: admins

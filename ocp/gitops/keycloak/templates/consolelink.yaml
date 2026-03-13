@@ -28,7 +28,7 @@ metadata:
 spec:
   location: ApplicationMenu
   text: Keycloak (SSO Realm)
-  href: https://keycloak.{{ $clusterDomain }}/admin/master/console/#/sso
+  href: https://keycloak.{{ $clusterDomain }}/admin/sso/console/
   applicationMenu:
     section: Red Hat Applications
     imageURL: https://keycloak.{{ $clusterDomain }}/favicon.ico

@@ -37,6 +37,8 @@ spec:
             - name
           email:
             - email
+          groups:
+            - groups
 {{- end }}
 {{- if .Values.gitlab.login }}
 {{- $glSecret := lookup "v1" "Secret" "gitlab-system" "gitlab-openshift-oauth" }}

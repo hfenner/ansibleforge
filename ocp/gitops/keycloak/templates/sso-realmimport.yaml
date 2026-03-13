@@ -73,6 +73,18 @@ spec:
           - profile
           - email
         attributes: {}
+        protocolMappers:
+          - name: groups
+            protocol: openid-connect
+            protocolMapper: oidc-group-membership-mapper
+            config:
+              claim.name: groups
+              full.path: "false"
+              id.token.claim: "true"
+              access.token.claim: "true"
+              userinfo.token.claim: "true"
+    groups:
+      - name: admins
     authenticationFlows:
       - alias: first broker login
         builtIn: true
@@ -159,7 +171,7 @@ spec:
         config:
           clientId: ${GITHUB_CLIENT_ID}
           clientSecret: ${GITHUB_CLIENT_SECRET}
-          defaultScope: user:email
+          defaultScope: "user:email read:org"
           syncMode: FORCE
       {{- end }}
     identityProviderMappers:
@@ -178,5 +190,14 @@ spec:
         config:
           syncMode: INHERIT
           template: "${ALIAS}.${CLAIM.login}"
+      {{- if .Values.github.org }}
+      - name: github-org-admins
+        identityProviderAlias: github
+        identityProviderMapper: github-org-to-group-mapper
+        config:
+          syncMode: FORCE
+          github.org: {{ .Values.github.org }}
+          keycloak.group: admins
+      {{- end }}
       {{- end }}
     {{- end }}

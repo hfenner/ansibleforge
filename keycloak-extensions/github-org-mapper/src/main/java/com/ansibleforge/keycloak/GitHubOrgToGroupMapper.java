@@ -3,7 +3,7 @@ package com.ansibleforge.keycloak;
 import org.keycloak.broker.oidc.AbstractOAuth2IdentityProvider;
 import org.keycloak.broker.provider.AbstractIdentityProviderMapper;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
-import org.keycloak.broker.provider.IdentityProviderSyncMode;
+import org.keycloak.models.IdentityProviderSyncMode;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.IdentityProviderMapperModel;
 import org.keycloak.models.KeycloakSession;
@@ -16,7 +16,6 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
@@ -142,10 +141,9 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
 
         if (isMember) {
             user.joinGroup(group);
-            context.getMapperAssignedGroups().add(group);
+            context.addMapperAssignedGroup(group.getId());
         } else {
-            Set<GroupModel> assignedGroups = context.getMapperAssignedGroups();
-            if (assignedGroups != null && assignedGroups.contains(group)) {
+            if (context.hasMapperAssignedGroup(group.getId())) {
                 user.leaveGroup(group);
             }
         }

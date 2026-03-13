@@ -124,8 +124,6 @@ spec:
         frontchannelLogout: true
         standardFlowEnabled: true
         directAccessGrantsEnabled: false
-        authenticationFlowBindingOverrides:
-          browser: aws-admin-browser
         attributes:
           saml.authnstatement: "true"
           saml.server.signature: "true"
@@ -202,9 +200,6 @@ spec:
         trustEmail: true
         storeToken: true
         firstBrokerLoginFlowAlias: first broker login
-        {{- if and .Values.github.mapper .Values.github.org }}
-        postBrokerLoginFlowAlias: github-org-check
-        {{- end }}
         config:
           clientId: ${GITHUB_CLIENT_ID}
           clientSecret: ${GITHUB_CLIENT_SECRET}
@@ -246,96 +241,5 @@ spec:
           github.org: {{ .Values.github.org }}
           keycloak.group: org-members
       {{- end }}
-      {{- end }}
-    {{- end }}
-    {{- if or (and .Values.github.broker .Values.github.mapper .Values.github.org) .Values.aws.saml }}
-    authenticationFlows:
-      {{- if and .Values.github.broker .Values.github.mapper .Values.github.org }}
-      - alias: github-org-check
-        description: "Deny users not in the GitHub org"
-        providerId: basic-flow
-        topLevel: true
-        builtIn: false
-        authenticationExecutions:
-          - authenticatorFlow: true
-            flowAlias: "Deny non-org members"
-            requirement: CONDITIONAL
-            priority: 0
-      - alias: "Deny non-org members"
-        description: "Conditional deny for non-org members"
-        providerId: basic-flow
-        topLevel: false
-        builtIn: false
-        authenticationExecutions:
-          - authenticator: conditional-user-role
-            authenticatorFlow: false
-            requirement: REQUIRED
-            priority: 0
-            authenticatorConfig:
-              alias: "Not in org-members"
-              config:
-                condUserRole: "org-members"
-                negate: "true"
-          - authenticator: deny-access-authenticator
-            authenticatorFlow: false
-            requirement: REQUIRED
-            priority: 1
-            authenticatorConfig:
-              alias: "Org access denied"
-              config:
-                errorMessage: "Access denied. You must be a member of the {{ .Values.github.org }} GitHub organization."
-      {{- end }}
-      {{- if .Values.aws.saml }}
-      - alias: aws-admin-browser
-        description: "Browser flow restricted to admins for AWS console access"
-        providerId: basic-flow
-        topLevel: true
-        builtIn: false
-        authenticationExecutions:
-          - authenticator: auth-cookie
-            authenticatorFlow: false
-            requirement: ALTERNATIVE
-            priority: 0
-          - authenticatorFlow: true
-            flowAlias: "AWS admin forms"
-            requirement: ALTERNATIVE
-            priority: 1
-      - alias: "AWS admin forms"
-        description: "Username/password + admin check for AWS"
-        providerId: basic-flow
-        topLevel: false
-        builtIn: false
-        authenticationExecutions:
-          - authenticator: auth-username-password-form
-            authenticatorFlow: false
-            requirement: REQUIRED
-            priority: 0
-          - authenticatorFlow: true
-            flowAlias: "AWS admin gate"
-            requirement: CONDITIONAL
-            priority: 1
-      - alias: "AWS admin gate"
-        description: "Deny non-admin users"
-        providerId: basic-flow
-        topLevel: false
-        builtIn: false
-        authenticationExecutions:
-          - authenticator: conditional-user-role
-            authenticatorFlow: false
-            requirement: REQUIRED
-            priority: 0
-            authenticatorConfig:
-              alias: "Not in admins"
-              config:
-                condUserRole: "admins"
-                negate: "true"
-          - authenticator: deny-access-authenticator
-            authenticatorFlow: false
-            requirement: REQUIRED
-            priority: 1
-            authenticatorConfig:
-              alias: "AWS access denied"
-              config:
-                errorMessage: "Access denied. Only SSO admins can access the AWS Console."
       {{- end }}
     {{- end }}

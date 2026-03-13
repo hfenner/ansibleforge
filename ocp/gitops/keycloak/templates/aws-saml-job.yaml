@@ -54,6 +54,8 @@ spec:
               REALM="sso"
 
               # --- Ensure aws-admin-browser auth flow ---
+              # Copies the browser flow, then adds an admin gate (conditional deny
+              # for non-admins) inside the forms subflow after authentication.
               ensure_aws_admin_flow() {
                 local flow_exists
                 flow_exists=$(curl -sf -k -H "${AUTH}" \
@@ -70,69 +72,60 @@ spec:
                   return
                 fi
 
-                echo "  Creating aws-admin-browser flow..."
+                echo "  Creating aws-admin-browser flow (copy of browser)..."
+                # Copy the built-in browser flow
                 curl -sf -k -X POST \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/browser/copy" \
                   -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d '{"alias": "aws-admin-browser", "providerId": "basic-flow", "topLevel": true, "builtIn": false, "description": "Browser flow restricted to admins for AWS console access"}'
+                  -d '{"newName": "aws-admin-browser"}'
 
-                # Add cookie authenticator (ALTERNATIVE)
-                curl -sf -k -X POST \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions/execution" \
-                  -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d '{"provider": "auth-cookie"}'
-
-                # Add forms subflow (ALTERNATIVE)
-                curl -sf -k -X POST \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions/flow" \
-                  -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d '{"alias": "AWS admin forms", "type": "basic-flow", "provider": "registration-page-form"}'
-
-                # Set executions to ALTERNATIVE
-                local execs cookie_id forms_id
+                # Find the forms subflow (named "aws-admin-browser forms")
+                local execs forms_flow_alias
                 execs=$(curl -sf -k -H "${AUTH}" \
                   "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions")
-                cookie_id=$(echo "$execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e.get('providerId')=='auth-cookie'))")
-                forms_id=$(echo "$execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e.get('displayName')=='AWS admin forms'))")
+                forms_flow_alias=$(echo "$execs" | python3 -c "
+              import sys,json
+              execs=json.load(sys.stdin)
+              for e in execs:
+                  if 'forms' in (e.get('displayName') or '').lower() and e.get('level')==0:
+                      print(e['displayName'])
+                      break
+              ")
+                echo "  Forms subflow: ${forms_flow_alias}"
 
-                curl -sf -k -X PUT \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions" \
-                  -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d "{\"id\": \"${cookie_id}\", \"requirement\": \"ALTERNATIVE\", \"providerId\": \"auth-cookie\"}"
-                curl -sf -k -X PUT \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/aws-admin-browser/executions" \
-                  -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d "{\"id\": \"${forms_id}\", \"requirement\": \"ALTERNATIVE\", \"displayName\": \"AWS admin forms\"}"
+                # URL-encode the forms alias
+                local forms_url_alias
+                forms_url_alias=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${forms_flow_alias}'))")
 
-                # Add username-password to forms subflow
+                # Add admin gate conditional subflow inside forms (after auth)
                 curl -sf -k -X POST \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions/execution" \
-                  -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d '{"provider": "auth-username-password-form"}'
-
-                # Add conditional gate subflow
-                curl -sf -k -X POST \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions/flow" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/${forms_url_alias}/executions/flow" \
                   -H "${AUTH}" -H "Content-Type: application/json" \
                   -d '{"alias": "AWS admin gate", "type": "basic-flow", "provider": "registration-page-form"}'
 
-                # Set username-password to REQUIRED, gate to CONDITIONAL
-                local form_execs upw_id gate_id
+                # Set gate to CONDITIONAL and move it after username-password
+                local form_execs gate_id
                 form_execs=$(curl -sf -k -H "${AUTH}" \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions")
-                upw_id=$(echo "$form_execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e.get('providerId')=='auth-username-password-form'))")
-                gate_id=$(echo "$form_execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e.get('displayName')=='AWS admin gate'))")
-
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/${forms_url_alias}/executions")
+                gate_id=$(echo "$form_execs" | python3 -c "
+              import sys,json
+              execs=json.load(sys.stdin)
+              for e in execs:
+                  if e.get('displayName')=='AWS admin gate':
+                      print(e['id'])
+                      break
+              ")
                 curl -sf -k -X PUT \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions" \
-                  -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d "{\"id\": \"${upw_id}\", \"requirement\": \"REQUIRED\", \"providerId\": \"auth-username-password-form\"}"
-                curl -sf -k -X PUT \
-                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20forms/executions" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/${forms_url_alias}/executions" \
                   -H "${AUTH}" -H "Content-Type: application/json" \
                   -d "{\"id\": \"${gate_id}\", \"requirement\": \"CONDITIONAL\", \"displayName\": \"AWS admin gate\"}"
 
-                # Add condition (not in admins) and deny to gate subflow
+                # Move gate down so it's after Username Password Form (lower-priority = move down)
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/executions/${gate_id}/lower-priority" \
+                  -H "${AUTH}" -H "Content-Type: application/json"
+
+                # Add condition (not in admins) and deny executions inside the gate
                 curl -sf -k -X POST \
                   "${KEYCLOAK_URL}/admin/realms/${REALM}/authentication/flows/AWS%20admin%20gate/executions/execution" \
                   -H "${AUTH}" -H "Content-Type: application/json" \

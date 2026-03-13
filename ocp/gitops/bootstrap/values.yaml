@@ -161,11 +161,6 @@ components:
       - SkipDryRunOnMissingResource=true
       - RespectIgnoreDifferences=true
     ignoreDifferences:
-      - group: user.openshift.io
-        kind: Group
-        name: admins
-        jqPathExpressions:
-          - .users
       - group: external-secrets.io
         kind: ExternalSecret
         jqPathExpressions:

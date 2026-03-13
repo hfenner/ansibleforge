@@ -1,9 +1,6 @@
 clusterDomain: ""
 clusterName: ""
 
-admins:
-  - sysadmin
-
 htpasswd:
   enabled: false
   secretStore: aws-secrets-manager

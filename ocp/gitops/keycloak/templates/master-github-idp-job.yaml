@@ -22,7 +22,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: configure-github-idp
-          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          image: registry.access.redhat.com/ubi9/ubi:latest
           command: ["/bin/sh", "-c"]
           env:
             - name: KEYCLOAK_URL

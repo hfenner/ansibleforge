@@ -163,10 +163,22 @@ spec:
               friendly.name: "AWS Role"
               attribute.value: "arn:aws:iam::{{ .Values.aws.accountId }}:role/KeycloakAdminAccess,arn:aws:iam::{{ .Values.aws.accountId }}:saml-provider/keycloak-sso"
       {{- end }}
+    roles:
+      realm:
+        - name: admins
+          description: "SSO administrators"
+        {{- if and .Values.github.broker .Values.github.mapper .Values.github.org }}
+        - name: org-members
+          description: "Members of the GitHub organization"
+        {{- end }}
     groups:
       - name: admins
+        realmRoles:
+          - admins
       {{- if and .Values.github.broker .Values.github.mapper .Values.github.org }}
       - name: org-members
+        realmRoles:
+          - org-members
       {{- end }}
     {{- if or .Values.gitlab.broker .Values.github.broker }}
     identityProviders:

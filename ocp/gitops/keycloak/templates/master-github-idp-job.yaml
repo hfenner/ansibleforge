@@ -93,6 +93,31 @@ spec:
                 echo "$group_id"
               }
 
+              ensure_role_for_group() {
+                local realm="$1" role_name="$2" group_id="$3"
+                local role_exists
+                role_exists=$(curl -sf -k -o /dev/null -w "%{http_code}" \
+                  -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/roles/${role_name}")
+                if [ "$role_exists" != "200" ]; then
+                  echo "  Creating role: ${role_name}"
+                  curl -sf -k -X POST \
+                    "${KEYCLOAK_URL}/admin/realms/${realm}/roles" \
+                    -H "${AUTH}" -H "Content-Type: application/json" \
+                    -d "{\"name\": \"${role_name}\"}"
+                else
+                  echo "  Role exists: ${role_name}"
+                fi
+                local role_json
+                role_json=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/roles/${role_name}")
+                echo "  Mapping role ${role_name} to group..."
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/groups/${group_id}/role-mappings/realm" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "[${role_json}]" || echo "  (role may already be mapped)"
+              }
+
               upsert_idp_mapper() {
                 local realm="$1" name="$2" payload="$3"
                 local mappers existing_id
@@ -262,9 +287,12 @@ spec:
                 # Ensure GitHub IdP
                 configure_github_idp "${realm}"
 
-                # Ensure groups
-                ensure_group "${realm}" "admins"
-                ensure_group "${realm}" "org-members"
+                # Ensure groups and matching realm roles
+                local admins_gid org_gid
+                admins_gid=$(ensure_group "${realm}" "admins")
+                org_gid=$(ensure_group "${realm}" "org-members")
+                ensure_role_for_group "${realm}" "admins" "${admins_gid}"
+                ensure_role_for_group "${realm}" "org-members" "${org_gid}"
 
                 # Ensure IdP mappers
                 upsert_idp_mapper "${realm}" "github-username" '{

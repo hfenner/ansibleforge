@@ -314,8 +314,37 @@ spec:
                 echo "  AWS SAML client configured"
               }
 
+              # Ensure admins role exists and is mapped to admins group
+              ensure_admins_role() {
+                local role_exists
+                role_exists=$(curl -sf -k -o /dev/null -w "%{http_code}" \
+                  -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/roles/admins")
+                if [ "$role_exists" != "200" ]; then
+                  echo "  Creating admins realm role..."
+                  curl -sf -k -X POST \
+                    "${KEYCLOAK_URL}/admin/realms/${REALM}/roles" \
+                    -H "${AUTH}" -H "Content-Type: application/json" \
+                    -d '{"name": "admins", "description": "SSO administrators"}'
+                fi
+                local group_id
+                group_id=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/groups?search=admins" \
+                  | python3 -c "import sys,json; groups=json.load(sys.stdin); matches=[g['id'] for g in groups if g['name']=='admins']; print(matches[0] if matches else '')")
+                if [ -n "$group_id" ]; then
+                  local role_json
+                  role_json=$(curl -sf -k -H "${AUTH}" \
+                    "${KEYCLOAK_URL}/admin/realms/${REALM}/roles/admins")
+                  curl -sf -k -X POST \
+                    "${KEYCLOAK_URL}/admin/realms/${REALM}/groups/${group_id}/role-mappings/realm" \
+                    -H "${AUTH}" -H "Content-Type: application/json" \
+                    -d "[${role_json}]" || true
+                fi
+              }
+
               echo ""
               echo "=== Configuring AWS SAML federation ==="
+              ensure_admins_role
               ensure_aws_admin_flow
               ensure_aws_saml_client
               echo ""

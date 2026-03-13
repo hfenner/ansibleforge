@@ -116,6 +116,9 @@ spec:
               userinfo.token.claim: "true"
     groups:
       - name: admins
+      {{- if and .Values.github.broker .Values.github.mapper .Values.github.org }}
+      - name: org-members
+      {{- end }}
     {{- if or .Values.gitlab.broker .Values.github.broker }}
     identityProviders:
       {{- if .Values.gitlab.broker }}
@@ -143,6 +146,9 @@ spec:
         trustEmail: true
         storeToken: true
         firstBrokerLoginFlowAlias: first broker login
+        {{- if and .Values.github.mapper .Values.github.org }}
+        postBrokerLoginFlowAlias: github-org-check
+        {{- end }}
         config:
           clientId: ${GITHUB_CLIENT_ID}
           clientSecret: ${GITHUB_CLIENT_SECRET}
@@ -176,6 +182,49 @@ spec:
           github.team: {{ .Values.github.team }}
           {{- end }}
           keycloak.group: admins
+      - name: github-org-members
+        identityProviderAlias: github
+        identityProviderMapper: github-org-to-group-mapper
+        config:
+          syncMode: FORCE
+          github.org: {{ .Values.github.org }}
+          keycloak.group: org-members
       {{- end }}
       {{- end }}
+    {{- end }}
+    {{- if and .Values.github.broker .Values.github.mapper .Values.github.org }}
+    authenticationFlows:
+      - alias: github-org-check
+        description: "Deny users not in the GitHub org"
+        providerId: basic-flow
+        topLevel: true
+        builtIn: false
+        authenticationExecutions:
+          - authenticatorFlow: true
+            flowAlias: "Deny non-org members"
+            requirement: CONDITIONAL
+            priority: 0
+      - alias: "Deny non-org members"
+        description: "Conditional deny for non-org members"
+        providerId: basic-flow
+        topLevel: false
+        builtIn: false
+        authenticationExecutions:
+          - authenticator: conditional-user-role
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 0
+            authenticatorConfig:
+              alias: "Not in org-members"
+              config:
+                condUserRole: "org-members"
+                negate: "true"
+          - authenticator: deny-access-authenticator
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 1
+            authenticatorConfig:
+              alias: "Org access denied"
+              config:
+                errorMessage: "Access denied. You must be a member of the {{ .Values.github.org }} GitHub organization."
     {{- end }}

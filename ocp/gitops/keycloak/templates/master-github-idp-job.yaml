@@ -9,19 +9,19 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: master-github-idp
+  name: github-idp-config
   namespace: {{ .Values.namespace }}
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 2
-  activeDeadlineSeconds: 180
+  activeDeadlineSeconds: 300
   template:
     spec:
       restartPolicy: Never
       containers:
-        - name: configure-master-idp
+        - name: configure-github-idp
           image: registry.access.redhat.com/ubi9/ubi-minimal:latest
           command: ["/bin/sh", "-c"]
           env:
@@ -65,60 +65,40 @@ spec:
                 -d "grant_type=password" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
               AUTH="Authorization: Bearer ${TOKEN}"
 
-              echo "=== Configuring GitHub IdP on master realm ==="
-              EXISTING=$(curl -sf -k -o /dev/null -w "%{http_code}" \
-                -H "${AUTH}" \
-                "${KEYCLOAK_URL}/admin/realms/master/identity-provider/instances/github")
+              # --- Helper functions ---
 
-              if [ "$EXISTING" = "200" ]; then
-                echo "GitHub IdP already exists, updating..."
-                curl -sf -k -X PUT \
-                  "${KEYCLOAK_URL}/admin/realms/master/identity-provider/instances/github" \
-                  -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d "{
-                    \"alias\": \"github\",
-                    \"providerId\": \"github\",
-                    \"enabled\": true,
-                    \"trustEmail\": true,
-                    \"storeToken\": true,
-                    \"firstBrokerLoginFlowAlias\": \"first broker login\",
-                    \"config\": {
-                      \"clientId\": \"${GITHUB_CLIENT_ID}\",
-                      \"clientSecret\": \"${GITHUB_CLIENT_SECRET}\",
-                      \"defaultScope\": \"user:email read:org\",
-                      \"syncMode\": \"FORCE\"
-                    }
-                  }"
-              else
-                echo "Creating GitHub IdP..."
-                curl -sf -k -X POST \
-                  "${KEYCLOAK_URL}/admin/realms/master/identity-provider/instances" \
-                  -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d "{
-                    \"alias\": \"github\",
-                    \"providerId\": \"github\",
-                    \"enabled\": true,
-                    \"trustEmail\": true,
-                    \"storeToken\": true,
-                    \"firstBrokerLoginFlowAlias\": \"first broker login\",
-                    \"config\": {
-                      \"clientId\": \"${GITHUB_CLIENT_ID}\",
-                      \"clientSecret\": \"${GITHUB_CLIENT_SECRET}\",
-                      \"defaultScope\": \"user:email read:org\",
-                      \"syncMode\": \"FORCE\"
-                    }
-                  }"
-              fi
+              ensure_group() {
+                local realm="$1" group_name="$2"
+                local group_id
+                group_id=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/groups?search=${group_name}" \
+                  | python3 -c "
+              import sys,json
+              groups=json.load(sys.stdin)
+              matches=[g['id'] for g in groups if g['name']=='${group_name}']
+              print(matches[0] if matches else '')
+              ")
+                if [ -z "$group_id" ]; then
+                  echo "  Creating group: ${group_name}"
+                  curl -sf -k -X POST \
+                    "${KEYCLOAK_URL}/admin/realms/${realm}/groups" \
+                    -H "${AUTH}" -H "Content-Type: application/json" \
+                    -d "{\"name\": \"${group_name}\"}"
+                  group_id=$(curl -sf -k -H "${AUTH}" \
+                    "${KEYCLOAK_URL}/admin/realms/${realm}/groups?search=${group_name}" \
+                    | python3 -c "import sys,json; groups=json.load(sys.stdin); print(next(g['id'] for g in groups if g['name']=='${group_name}'))")
+                else
+                  echo "  Group exists: ${group_name}"
+                fi
+                echo "$group_id"
+              }
 
-              echo "=== Configuring IdP mappers ==="
-              # Get existing mappers
-              MAPPERS=$(curl -sf -k -H "${AUTH}" \
-                "${KEYCLOAK_URL}/admin/realms/master/identity-provider/instances/github/mappers")
-
-              upsert_mapper() {
-                local name="$1" payload="$2"
-                local existing_id
-                existing_id=$(echo "${MAPPERS}" | python3 -c "
+              upsert_idp_mapper() {
+                local realm="$1" name="$2" payload="$3"
+                local mappers existing_id
+                mappers=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/identity-provider/instances/github/mappers")
+                existing_id=$(echo "${mappers}" | python3 -c "
               import sys,json
               mappers=json.load(sys.stdin)
               matches=[m['id'] for m in mappers if m['name']=='${name}']
@@ -126,78 +106,229 @@ spec:
               " 2>/dev/null)
 
                 if [ -n "$existing_id" ]; then
-                  echo "Updating mapper: ${name}"
+                  echo "  Updating mapper: ${name}"
                   curl -sf -k -X PUT \
-                    "${KEYCLOAK_URL}/admin/realms/master/identity-provider/instances/github/mappers/${existing_id}" \
+                    "${KEYCLOAK_URL}/admin/realms/${realm}/identity-provider/instances/github/mappers/${existing_id}" \
                     -H "${AUTH}" -H "Content-Type: application/json" \
                     -d "$(echo "${payload}" | python3 -c "import sys,json; d=json.load(sys.stdin); d['id']='${existing_id}'; print(json.dumps(d))")"
                 else
-                  echo "Creating mapper: ${name}"
+                  echo "  Creating mapper: ${name}"
                   curl -sf -k -X POST \
-                    "${KEYCLOAK_URL}/admin/realms/master/identity-provider/instances/github/mappers" \
+                    "${KEYCLOAK_URL}/admin/realms/${realm}/identity-provider/instances/github/mappers" \
                     -H "${AUTH}" -H "Content-Type: application/json" \
                     -d "${payload}"
                 fi
               }
 
-              upsert_mapper "github-username" '{
-                "name": "github-username",
-                "identityProviderAlias": "github",
-                "identityProviderMapper": "oidc-username-idp-mapper",
-                "config": {
-                  "syncMode": "INHERIT",
-                  "template": "${ALIAS}.${CLAIM.login}"
-                }
-              }'
-
-              TEAM_CONFIG=""
-              if [ -n "${GITHUB_TEAM:-}" ]; then
-                TEAM_CONFIG="\"github.team\": \"${GITHUB_TEAM}\","
-              fi
-              upsert_mapper "github-org-admins" "{
-                \"name\": \"github-org-admins\",
-                \"identityProviderAlias\": \"github\",
-                \"identityProviderMapper\": \"github-org-to-group-mapper\",
-                \"config\": {
-                  \"syncMode\": \"FORCE\",
-                  \"github.org\": \"${GITHUB_ORG}\",
-                  ${TEAM_CONFIG}
-                  \"keycloak.group\": \"admins\"
-                }
-              }"
-
-              echo "=== Configuring admins group with admin role ==="
-              # Create admins group if it doesn't exist
-              GROUP_ID=$(curl -sf -k -H "${AUTH}" \
-                "${KEYCLOAK_URL}/admin/realms/master/groups?search=admins" \
-                | python3 -c "
+              ensure_org_check_flow() {
+                local realm="$1"
+                local flow_exists
+                flow_exists=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows" \
+                  | python3 -c "
               import sys,json
-              groups=json.load(sys.stdin)
-              matches=[g['id'] for g in groups if g['name']=='admins']
-              print(matches[0] if matches else '')
+              flows=json.load(sys.stdin)
+              matches=[f for f in flows if f['alias']=='github-org-check']
+              print('yes' if matches else '')
               ")
 
-              if [ -z "$GROUP_ID" ]; then
-                echo "Creating admins group..."
-                curl -sf -k -X POST \
-                  "${KEYCLOAK_URL}/admin/realms/master/groups" \
-                  -H "${AUTH}" -H "Content-Type: application/json" \
-                  -d '{"name": "admins"}'
-                GROUP_ID=$(curl -sf -k -H "${AUTH}" \
-                  "${KEYCLOAK_URL}/admin/realms/master/groups?search=admins" \
-                  | python3 -c "import sys,json; groups=json.load(sys.stdin); print(next(g['id'] for g in groups if g['name']=='admins'))")
-              else
-                echo "admins group already exists"
-              fi
+                if [ -n "$flow_exists" ]; then
+                  echo "  github-org-check flow already exists"
+                  return
+                fi
 
-              # Assign admin realm role to admins group
+                echo "  Creating github-org-check flow..."
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"alias": "github-org-check", "providerId": "basic-flow", "topLevel": true, "builtIn": false, "description": "Deny users not in GitHub org"}'
+
+                # Add conditional subflow
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows/github-org-check/executions/flow" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"alias": "Deny non-org members", "type": "basic-flow", "provider": "registration-page-form"}'
+
+                # Set subflow to CONDITIONAL
+                local subflow_id
+                subflow_id=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows/github-org-check/executions" \
+                  | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['id'])")
+                curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows/github-org-check/executions" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"id\": \"${subflow_id}\", \"requirement\": \"CONDITIONAL\", \"displayName\": \"Deny non-org members\"}"
+
+                # Add condition and deny executions
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows/Deny%20non-org%20members/executions/execution" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"provider": "conditional-user-role"}'
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows/Deny%20non-org%20members/executions/execution" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"provider": "deny-access-authenticator"}'
+
+                # Get execution IDs and configure
+                local execs cond_id deny_id
+                execs=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows/Deny%20non-org%20members/executions")
+                cond_id=$(echo "$execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e['providerId']=='conditional-user-role'))")
+                deny_id=$(echo "$execs" | python3 -c "import sys,json; execs=json.load(sys.stdin); print(next(e['id'] for e in execs if e['providerId']=='deny-access-authenticator'))")
+
+                # Set both to REQUIRED
+                curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows/Deny%20non-org%20members/executions" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"id\": \"${cond_id}\", \"requirement\": \"REQUIRED\", \"displayName\": \"Condition - user role\", \"providerId\": \"conditional-user-role\"}"
+                curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/flows/Deny%20non-org%20members/executions" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"id\": \"${deny_id}\", \"requirement\": \"REQUIRED\", \"displayName\": \"Deny access\", \"providerId\": \"deny-access-authenticator\"}"
+
+                # Configure condition: negate = true, check org-members group
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/executions/${cond_id}/config" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d '{"alias": "Not in org-members", "config": {"condUserRole": "org-members", "negate": "true"}}'
+                curl -sf -k -X POST \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/authentication/executions/${deny_id}/config" \
+                  -H "${AUTH}" -H "Content-Type: application/json" \
+                  -d "{\"alias\": \"Org access denied\", \"config\": {\"errorMessage\": \"Access denied. You must be a member of the ${GITHUB_ORG} GitHub organization.\"}}"
+              }
+
+              set_post_broker_flow() {
+                local realm="$1"
+                echo "  Setting postBrokerLoginFlowAlias on GitHub IdP..."
+                local idp_config
+                idp_config=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/identity-provider/instances/github")
+                echo "$idp_config" | python3 -c "
+              import sys,json
+              idp = json.load(sys.stdin)
+              idp['postBrokerLoginFlowAlias'] = 'github-org-check'
+              print(json.dumps(idp))
+              " | curl -sf -k -X PUT \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/identity-provider/instances/github" \
+                  -H "${AUTH}" -H "Content-Type: application/json" -d @-
+              }
+
+              configure_github_idp() {
+                local realm="$1"
+                echo "  Configuring GitHub IdP..."
+                local existing
+                existing=$(curl -sf -k -o /dev/null -w "%{http_code}" \
+                  -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${realm}/identity-provider/instances/github")
+
+                local idp_payload="{
+                  \"alias\": \"github\",
+                  \"providerId\": \"github\",
+                  \"enabled\": true,
+                  \"trustEmail\": true,
+                  \"storeToken\": true,
+                  \"firstBrokerLoginFlowAlias\": \"first broker login\",
+                  \"postBrokerLoginFlowAlias\": \"github-org-check\",
+                  \"config\": {
+                    \"clientId\": \"${GITHUB_CLIENT_ID}\",
+                    \"clientSecret\": \"${GITHUB_CLIENT_SECRET}\",
+                    \"defaultScope\": \"user:email read:org\",
+                    \"syncMode\": \"FORCE\"
+                  }
+                }"
+
+                if [ "$existing" = "200" ]; then
+                  echo "  GitHub IdP exists, updating..."
+                  curl -sf -k -X PUT \
+                    "${KEYCLOAK_URL}/admin/realms/${realm}/identity-provider/instances/github" \
+                    -H "${AUTH}" -H "Content-Type: application/json" \
+                    -d "$idp_payload"
+                else
+                  echo "  Creating GitHub IdP..."
+                  curl -sf -k -X POST \
+                    "${KEYCLOAK_URL}/admin/realms/${realm}/identity-provider/instances" \
+                    -H "${AUTH}" -H "Content-Type: application/json" \
+                    -d "$idp_payload"
+                fi
+              }
+
+              configure_realm() {
+                local realm="$1"
+                echo ""
+                echo "========================================"
+                echo "=== Configuring realm: ${realm}"
+                echo "========================================"
+
+                # Ensure GitHub IdP
+                configure_github_idp "${realm}"
+
+                # Ensure groups
+                ensure_group "${realm}" "admins"
+                ensure_group "${realm}" "org-members"
+
+                # Ensure IdP mappers
+                upsert_idp_mapper "${realm}" "github-username" '{
+                  "name": "github-username",
+                  "identityProviderAlias": "github",
+                  "identityProviderMapper": "oidc-username-idp-mapper",
+                  "config": {
+                    "syncMode": "INHERIT",
+                    "template": "${ALIAS}.${CLAIM.login}"
+                  }
+                }'
+
+                TEAM_CONFIG=""
+                if [ -n "${GITHUB_TEAM:-}" ]; then
+                  TEAM_CONFIG="\"github.team\": \"${GITHUB_TEAM}\","
+                fi
+                upsert_idp_mapper "${realm}" "github-org-admins" "{
+                  \"name\": \"github-org-admins\",
+                  \"identityProviderAlias\": \"github\",
+                  \"identityProviderMapper\": \"github-org-to-group-mapper\",
+                  \"config\": {
+                    \"syncMode\": \"FORCE\",
+                    \"github.org\": \"${GITHUB_ORG}\",
+                    ${TEAM_CONFIG}
+                    \"keycloak.group\": \"admins\"
+                  }
+                }"
+
+                upsert_idp_mapper "${realm}" "github-org-members" "{
+                  \"name\": \"github-org-members\",
+                  \"identityProviderAlias\": \"github\",
+                  \"identityProviderMapper\": \"github-org-to-group-mapper\",
+                  \"config\": {
+                    \"syncMode\": \"FORCE\",
+                    \"github.org\": \"${GITHUB_ORG}\",
+                    \"keycloak.group\": \"org-members\"
+                  }
+                }"
+
+                # Ensure org-check auth flow
+                ensure_org_check_flow "${realm}"
+
+                # Set post-broker-login flow on GitHub IdP
+                set_post_broker_flow "${realm}"
+              }
+
+              # --- Configure SSO realm ---
+              configure_realm "sso"
+
+              # --- Configure master realm (additional: admin role) ---
+              configure_realm "master"
+
+              echo ""
+              echo "=== Assigning admin role to admins group in master realm ==="
+              GROUP_ID=$(curl -sf -k -H "${AUTH}" \
+                "${KEYCLOAK_URL}/admin/realms/master/groups?search=admins" \
+                | python3 -c "import sys,json; groups=json.load(sys.stdin); print(next(g['id'] for g in groups if g['name']=='admins'))")
               ADMIN_ROLE=$(curl -sf -k -H "${AUTH}" \
                 "${KEYCLOAK_URL}/admin/realms/master/roles/admin")
-              echo "Assigning admin role to admins group..."
               curl -sf -k -X POST \
                 "${KEYCLOAK_URL}/admin/realms/master/groups/${GROUP_ID}/role-mappings/realm" \
                 -H "${AUTH}" -H "Content-Type: application/json" \
                 -d "[${ADMIN_ROLE}]" || echo "(role may already be assigned)"
 
-              echo "=== Master realm GitHub IdP configuration complete ==="
+              echo ""
+              echo "=== GitHub IdP configuration complete for SSO and master realms ==="
 {{- end }}

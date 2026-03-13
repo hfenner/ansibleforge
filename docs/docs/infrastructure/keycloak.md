@@ -92,7 +92,14 @@ Enabled by setting `github.broker: true` in the Keycloak Helm values (enabled by
 
 6. After creation, generate a **client secret** on the app settings page
 
-7. Store the credentials in AWS Secrets Manager:
+7. **Install the app on your GitHub organization:**
+
+    Go to the app's settings page → **Install App** → select your organization (e.g., `infrabuildxyz`) → **Install**
+
+    !!! warning
+        This step is required for the org/team membership mapper to work. Without installing the app on the org, the GitHub API returns 404 for team membership checks, even if the user has `read:org` scope.
+
+8. Store the credentials in AWS Secrets Manager:
 
     ```bash
     aws secretsmanager put-secret-value \

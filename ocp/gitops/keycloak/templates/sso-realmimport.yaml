@@ -110,6 +110,7 @@ spec:
         providerId: github
         enabled: true
         trustEmail: true
+        storeToken: true
         firstBrokerLoginFlowAlias: first broker login
         config:
           clientId: ${GITHUB_CLIENT_ID}

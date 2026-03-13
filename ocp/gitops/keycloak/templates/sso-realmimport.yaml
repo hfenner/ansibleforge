@@ -134,15 +134,8 @@ spec:
           saml.signing.certificate: ""
         redirectUris:
           - "https://signin.aws.amazon.com/saml"
+        defaultClientScopes: []
         protocolMappers:
-          - name: Session Role
-            protocol: saml
-            protocolMapper: saml-role-list-mapper
-            config:
-              attribute.nameformat: Basic
-              attribute.name: "https://aws.amazon.com/SAML/Attributes/Role"
-              friendly.name: "Session Role"
-              single: "true"
           - name: Session Duration
             protocol: saml
             protocolMapper: saml-hardcode-attribute-mapper

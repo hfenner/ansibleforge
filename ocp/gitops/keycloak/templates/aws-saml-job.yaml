@@ -233,6 +233,24 @@ spec:
                     | python3 -c "import sys,json; clients=json.load(sys.stdin); print(clients[0]['id'] if clients else '')")
                 fi
 
+                # Remove default role_list scope (conflicts with our custom Role mapper)
+                echo "  Removing default role_list scope..."
+                local role_list_scope_id
+                role_list_scope_id=$(curl -sf -k -H "${AUTH}" \
+                  "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${client_exists}/default-client-scopes" \
+                  | python3 -c "
+              import sys,json
+              scopes=json.load(sys.stdin)
+              matches=[s['id'] for s in scopes if s['name']=='role_list']
+              print(matches[0] if matches else '')
+              ")
+                if [ -n "$role_list_scope_id" ]; then
+                  curl -sf -k -X DELETE \
+                    "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${client_exists}/default-client-scopes/${role_list_scope_id}" \
+                    -H "${AUTH}" || true
+                  echo "    Removed role_list scope"
+                fi
+
                 echo "  Configuring SAML protocol mappers..."
 
                 upsert_saml_mapper() {
@@ -261,18 +279,6 @@ spec:
                       -d "$payload"
                   fi
                 }
-
-                upsert_saml_mapper "Session Role" '{
-                  "name": "Session Role",
-                  "protocol": "saml",
-                  "protocolMapper": "saml-role-list-mapper",
-                  "config": {
-                    "attribute.nameformat": "Basic",
-                    "attribute.name": "https://aws.amazon.com/SAML/Attributes/Role",
-                    "friendly.name": "Session Role",
-                    "single": "true"
-                  }
-                }'
 
                 upsert_saml_mapper "Session Duration" '{
                   "name": "Session Duration",

@@ -1,3 +1,22 @@
+{{- $infra := lookup "config.openshift.io/v1" "Infrastructure" "" "cluster" }}
+{{- $awsRegion := "" }}
+{{- if and $infra $infra.status $infra.status.platformStatus $infra.status.platformStatus.aws }}
+{{- $awsRegion = $infra.status.platformStatus.aws.region }}
+{{- end }}
+{{- if $awsRegion }}
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: aws-console
+spec:
+  location: ApplicationMenu
+  text: AWS Console ({{ $awsRegion }})
+  href: https://{{ $awsRegion }}.console.aws.amazon.com/console/home?region={{ $awsRegion }}
+  applicationMenu:
+    section: Cloud Provider
+    imageURL: https://a0.awsstatic.com/libra-css/images/logos/aws_smile-header-desktop-en-white_59x35@2x.png
+---
+{{- end }}
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:

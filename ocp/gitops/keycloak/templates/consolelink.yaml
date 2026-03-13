@@ -8,13 +8,27 @@
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
-  name: keycloak
+  name: keycloak-master
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   location: ApplicationMenu
-  text: Keycloak
-  href: https://keycloak.{{ $clusterDomain }}
+  text: Keycloak (Master Realm)
+  href: https://keycloak.{{ $clusterDomain }}/admin/master/console/
+  applicationMenu:
+    section: Red Hat Applications
+    imageURL: https://keycloak.{{ $clusterDomain }}/favicon.ico
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: keycloak-sso
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  location: ApplicationMenu
+  text: Keycloak (SSO Realm)
+  href: https://keycloak.{{ $clusterDomain }}/admin/master/console/#/sso
   applicationMenu:
     section: Red Hat Applications
     imageURL: https://keycloak.{{ $clusterDomain }}/favicon.ico

@@ -9,5 +9,7 @@ gitlab:
 # GitHub as identity broker in Keycloak SSO realm
 github:
   broker: false
-  # GitHub organization for admin group mapping (requires custom SPI)
+  # Deploy custom GitHub org-to-group mapper SPI
+  mapper: false
+  # GitHub organization for admin group mapping (requires mapper: true)
   org: ""

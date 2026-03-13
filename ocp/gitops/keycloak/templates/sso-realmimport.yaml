@@ -171,7 +171,7 @@ spec:
         config:
           clientId: ${GITHUB_CLIENT_ID}
           clientSecret: ${GITHUB_CLIENT_SECRET}
-          defaultScope: "user:email read:org"
+          defaultScope: "user:email{{ if .Values.github.mapper }} read:org{{ end }}"
           syncMode: FORCE
       {{- end }}
     identityProviderMappers:
@@ -190,7 +190,7 @@ spec:
         config:
           syncMode: INHERIT
           template: "${ALIAS}.${CLAIM.login}"
-      {{- if .Values.github.org }}
+      {{- if and .Values.github.mapper .Values.github.org }}
       - name: github-org-admins
         identityProviderAlias: github
         identityProviderMapper: github-org-to-group-mapper

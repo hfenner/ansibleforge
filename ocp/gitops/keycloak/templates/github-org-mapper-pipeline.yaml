@@ -1,3 +1,4 @@
+{{- if .Values.github.mapper }}
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
@@ -76,3 +77,4 @@ spec:
           value: keycloak-extensions/github-org-mapper/Containerfile
         - name: CONTEXT
           value: keycloak-extensions/github-org-mapper
+{{- end }}

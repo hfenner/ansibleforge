@@ -30,7 +30,7 @@ spec:
     httpEnabled: true
   proxy:
     headers: forwarded
-  {{- if .Values.github.org }}
+  {{- if .Values.github.mapper }}
   unsupported:
     podTemplate:
       spec:

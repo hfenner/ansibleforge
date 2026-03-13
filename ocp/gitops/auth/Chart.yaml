@@ -1,0 +1,5 @@
+apiVersion: v2
+name: cluster-auth
+description: OpenShift OAuth identity providers
+version: 0.1.0
+type: application

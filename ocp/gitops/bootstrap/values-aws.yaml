@@ -14,6 +14,15 @@
 #     --set "components.ingress-certs.helm.parameters[2].value=Z3BGLV2DZIFZBI"
 components:
 
+  cluster-auth:
+    enabled: true
+    helm:
+      parameters:
+        - name: htpasswd.enabled
+          value: "true"
+        - name: keycloak.login
+          value: "true"
+
   external-secrets:
     helm:
       parameters:

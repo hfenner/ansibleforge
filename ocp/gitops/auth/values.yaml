@@ -1,0 +1,17 @@
+clusterDomain: ""
+clusterName: ""
+
+admins:
+  - sysadmin
+
+htpasswd:
+  enabled: false
+  secretStore: aws-secrets-manager
+  remoteKey: openshift
+
+keycloak:
+  login: false
+
+gitlab:
+  login: false
+  host: ""

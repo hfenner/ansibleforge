@@ -1,32 +1,137 @@
 # Keycloak
 
-**Chart:** `ocp/keycloak/`
+**Chart:** `ocp/gitops/keycloak/`
 **Namespace:** `keycloak`
 
 ## Overview
 
-Keycloak is the identity provider for AnsibleForge, providing SSO across GitLab and other applications. It is deployed via the Keycloak Operator.
+Keycloak is the identity provider for AnsibleForge, providing SSO across OpenShift, GitLab, GitHub, and other applications. It is deployed via the RHBK (Red Hat Build of Keycloak) Operator.
 
 ## Components deployed
 
 - Keycloak Operator Subscription
 - Keycloak instance with cluster-specific hostname
-- `KeycloakRealmImport` with pre-configured GitLab OAuth client
-- ExternalSecret pulling admin credentials from Vault
+- `KeycloakRealmImport` for the `sso` realm with pre-configured identity providers
+- ExternalSecrets pulling credentials from AWS Secrets Manager
 - ConsoleLink for access from the OpenShift application menu
 
 ## Realm configuration
 
-A `KeycloakRealmImport` resource pre-configures the realm with an OAuth client for GitLab, including redirect URIs pointing to the GitLab instance.
+The `sso` realm is configured via a `KeycloakRealmImport` resource that includes:
+
+- **idp-4-ocp** client — OIDC client used by OpenShift OAuth to authenticate users via Keycloak
+- **sysadmin** user — local Keycloak user with password from AWS Secrets Manager
+- **Identity providers** (conditionally enabled via Helm values):
+    - **GitLab** — OIDC broker for the cluster's GitLab instance
+    - **GitHub** — GitHub App OAuth for external authentication
+
+## Secrets
+
+All secrets are stored in AWS Secrets Manager under per-cluster keys and synced via ExternalSecrets:
+
+| AWS SM Key | Properties | K8s Secret |
+|------------|-----------|------------|
+| `<clusterName>/keycloak` | `db-password` | `keycloak-db-secret` |
+| `<clusterName>/keycloak` | `sysadmin-password` | `keycloak-sysadmin-password` |
+| `<clusterName>/keycloak` | `ocp-client-secret` | `keycloak-ocp-client-secret` |
+| `<clusterName>/keycloak` | `gitlab-client-secret` | `keycloak-gitlab-client-secret` |
+| `<clusterName>/github-app` | `client-id`, `client-secret` | `github-app-credentials` |
+
+## Identity providers
+
+### GitLab
+
+Enabled by setting `gitlab.broker: true` in the Keycloak Helm values. Uses OIDC to authenticate against the cluster's GitLab instance. The GitLab OAuth application must be created in GitLab and its credentials stored in AWS Secrets Manager.
+
+### GitHub
+
+Enabled by setting `github.broker: true` in the Keycloak Helm values (enabled by default on AWS clusters via `values-aws.yaml`). Uses a GitHub App for OAuth authentication.
+
+#### Creating a GitHub App
+
+1. Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**
+
+2. Configure the app:
+
+    | Field | Value |
+    |-------|-------|
+    | **App name** | `ansibleforge-sso` (or any unique name) |
+    | **Homepage URL** | Your cluster's Keycloak URL |
+    | **Callback URLs** | See below |
+    | **Webhook** | Uncheck "Active" (not needed) |
+
+3. Add a **callback URL** for each cluster that will use this app:
+
+    ```
+    https://keycloak.<clusterDomain>/realms/sso/broker/github/endpoint
+    ```
+
+    For example:
+    ```
+    https://keycloak.apps.fire.sandbox1370.opentlc.com/realms/sso/broker/github/endpoint
+    https://keycloak.apps.ice.sandbox1370.opentlc.com/realms/sso/broker/github/endpoint
+    ```
+
+    !!! note
+        Multiple clusters can share the same GitHub App — just add a callback URL for each cluster.
+
+4. Set **Account permissions**:
+
+    | Permission | Access |
+    |-----------|--------|
+    | **Email addresses** | Read-only |
+
+    !!! warning
+        The `Email addresses: Read-only` permission is **required**. Without it, Keycloak cannot retrieve the user's email from GitHub and login will fail with "Unexpected error when authenticating with identity provider".
+
+5. Click **Create GitHub App**
+
+6. After creation, generate a **client secret** on the app settings page
+
+7. Store the credentials in AWS Secrets Manager:
+
+    ```bash
+    aws secretsmanager put-secret-value \
+      --secret-id <clusterName>/github-app \
+      --secret-string '{
+        "client-id": "<Client ID from app settings>",
+        "client-secret": "<generated client secret>"
+      }'
+    ```
+
+    Repeat for each cluster that uses this app, using the cluster's name prefix.
 
 ## Configuration
 
-Update `ocp/keycloak/values.yaml` with your cluster domain:
+The chart is configured via Helm values, which are set per-cluster in the bootstrap:
 
 ```yaml
-domain: apps.<cluster-domain>
-gitlabDomain: gitlab.apps.<cluster-domain>
+clusterDomain: ""    # Auto-discovered if not set
+clusterName: ""      # Set by bootstrap (e.g., "fire", "ice")
+namespace: keycloak
+
+gitlab:
+  broker: false      # Enable GitLab as identity broker
+
+github:
+  broker: false      # Enable GitHub as identity broker
 ```
 
+## OpenShift OAuth integration
+
+The `cluster-auth` chart (`ocp/gitops/auth/`) configures OpenShift to use Keycloak as an OIDC identity provider named `rhbk`. It creates:
+
+- An ExternalSecret that syncs the `ocp-client-secret` from AWS SM into `keycloak-oidc-secret` in `openshift-config`
+- The `OAuth/cluster` resource pointing to the Keycloak `sso` realm
+
 !!! note
-    Both values are used in the Keycloak hostname spec and OAuth redirect URIs, so they must be set per-cluster.
+    OpenShift's OAuth server does not support PKCE. The `idp-4-ocp` client in Keycloak must **not** have `pkce.code.challenge.method` set, or login will fail with "Missing parameter: code_challenge_method".
+
+## Sync wave order
+
+| Wave | Resource |
+|------|----------|
+| 1 | ExternalSecrets (all credentials) |
+| 2 | Operator Subscription |
+| 3 | Keycloak instance |
+| 5 | KeycloakRealmImport (sso realm with IdPs) |

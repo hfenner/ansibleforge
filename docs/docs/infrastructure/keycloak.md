@@ -77,12 +77,16 @@ Enabled by setting `github.broker: true` in the Keycloak Helm values (enabled by
 
 4. Set **Account permissions**:
 
-    | Permission | Access |
-    |-----------|--------|
-    | **Email addresses** | Read-only |
+    | Permission | Access | Required for |
+    |-----------|--------|--------------|
+    | **Email addresses** | Read-only | Login (always required) |
+    | **Organization members** | Read-only | Org/team group mapping (only if using `github.mapper`) |
 
     !!! warning
         The `Email addresses: Read-only` permission is **required**. Without it, Keycloak cannot retrieve the user's email from GitHub and login will fail with "Unexpected error when authenticating with identity provider".
+
+    !!! note
+        The `Organization members: Read-only` permission is only needed if you enable the GitHub org-to-group mapper (`github.mapper: true`). It allows Keycloak to check org/team membership via the GitHub API.
 
 5. Click **Create GitHub App**
 
@@ -115,7 +119,75 @@ gitlab:
 
 github:
   broker: false      # Enable GitHub as identity broker
+  mapper: false      # Deploy GitHub org-to-group mapper SPI
+  org: ""            # GitHub org for admin group mapping
+  team: ""           # GitHub team slug (optional, narrows to team)
 ```
+
+## GitHub org-to-group mapper
+
+A custom Keycloak SPI that maps GitHub organization or team membership to Keycloak groups. This enables automatic admin group assignment for users who authenticate via GitHub.
+
+### How it works
+
+1. User authenticates via GitHub through Keycloak
+2. On login, the mapper calls the GitHub API to check org/team membership
+3. If the user is a member, they are added to the configured Keycloak group
+4. The `groups` OIDC claim in the token propagates group membership to OpenShift
+
+### Enabling the mapper
+
+Set the following Helm values on the keycloak component:
+
+```yaml
+github:
+  broker: true          # GitHub IdP must be enabled
+  mapper: true          # Deploy the SPI pipeline and init container
+  org: infrabuildxyz    # GitHub organization to check
+  team: admins          # (optional) Narrow to a specific team
+```
+
+When `github.mapper` is `true`, the chart deploys:
+
+- A **Tekton Pipeline** (`build-github-org-mapper`) that builds the Java SPI JAR
+- An **ImageStream** for the built artifact
+- An **init container** on the Keycloak pod that loads the JAR at startup
+
+### Building the mapper
+
+After the pipeline is deployed, run it to build the JAR:
+
+```bash
+oc create -f - <<EOF
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: build-github-org-mapper-
+  namespace: keycloak
+spec:
+  pipelineRef:
+    name: build-github-org-mapper
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+EOF
+```
+
+Once the pipeline completes, the Keycloak pod will pick up the JAR on its next restart.
+
+### GitHub App permissions
+
+The GitHub App must have **Organization members: Read-only** permission under **Organization permissions** for the mapper to check membership. Users who authorized the app before this permission was added will need to re-approve.
+
+### Source code
+
+The mapper source is at `keycloak-extensions/github-org-mapper/`. It implements the `IdentityProviderMapper` SPI and is compatible with Keycloak 26.x / RHBK 26.
 
 ## OpenShift OAuth integration
 

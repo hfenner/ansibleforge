@@ -117,7 +117,7 @@ spec:
       {{- if .Values.github.broker }}
       - name: github-username
         identityProviderAlias: github
-        identityProviderMapper: github-username-idp-mapper
+        identityProviderMapper: oidc-username-idp-mapper
         config:
           syncMode: INHERIT
           template: "${ALIAS}.${CLAIM.login}"

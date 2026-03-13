@@ -51,6 +51,22 @@ spec:
   realm:
     realm: sso
     enabled: true
+    clientScopes:
+      - name: groups
+        protocol: openid-connect
+        attributes:
+          include.in.token.scope: "true"
+          display.on.consent.screen: "false"
+        protocolMappers:
+          - name: groups
+            protocol: openid-connect
+            protocolMapper: oidc-group-membership-mapper
+            config:
+              claim.name: groups
+              full.path: "false"
+              id.token.claim: "true"
+              access.token.claim: "true"
+              userinfo.token.claim: "true"
     users:
       - username: sysadmin
         enabled: true
@@ -77,6 +93,8 @@ spec:
           - openid
           - profile
           - email
+        optionalClientScopes:
+          - groups
         attributes:
           pkce.code.challenge.method: S256
         protocolMappers:

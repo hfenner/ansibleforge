@@ -1,3 +1,4 @@
 clusterDomain: ""
+clusterName: ""
 namespace: gitlab-system
 chartVersion: "9.9.3"

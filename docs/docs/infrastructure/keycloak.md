@@ -206,6 +206,61 @@ The `cluster-auth` chart (`ocp/gitops/auth/`) configures OpenShift to use Keyclo
 !!! note
     OpenShift's OAuth server does not support PKCE. The `idp-4-ocp` client in Keycloak must **not** have `pkce.code.challenge.method` set, or login will fail with "Missing parameter: code_challenge_method".
 
+## Break-glass accounts
+
+Two break-glass accounts provide emergency access to the OpenShift console when GitHub or Keycloak are unavailable.
+
+### ocpsysadmin (htpasswd)
+
+A local OpenShift htpasswd user with a direct `ClusterRoleBinding` to `cluster-admin`. This account does not depend on Keycloak — use it when Keycloak is down or misconfigured.
+
+- **Identity provider:** `Local` (htpasswd)
+- **ClusterRoleBinding:** `ocpsysadmin-cluster-admin` (managed by the `cluster-auth` chart)
+- **Password stored in:** AWS Secrets Manager key `openshift`, property `sysadmin-password` (plaintext)
+- **Htpasswd generation:** The ExternalSecret template uses the Sprig `htpasswd` function to auto-generate the bcrypt hash
+
+To set or change the password:
+
+```bash
+# Update the plaintext password in AWS Secrets Manager
+aws secretsmanager put-secret-value \
+  --secret-id openshift \
+  --secret-string '{"sysadmin-password": "NEW_PASSWORD_HERE"}'
+```
+
+The ExternalSecret in `openshift-config` will auto-generate the bcrypt htpasswd entry and sync the change within 1 hour, or you can force it:
+
+```bash
+oc annotate externalsecret htpasswd-secret -n openshift-config force-sync=$(date +%s) --overwrite
+```
+
+### sysadmin (Keycloak)
+
+A local Keycloak user in the `sso` realm. This account authenticates through Keycloak (via the `rhbk` identity provider) but does not depend on GitHub. Use it when GitHub is down but Keycloak is healthy.
+
+- **Identity provider:** `rhbk` (Keycloak OIDC)
+- **Admin access:** Must be a member of the `admins` group in the Keycloak `sso` realm
+- **Password stored in:** AWS Secrets Manager key `<clusterName>/keycloak`, property `sysadmin-password`
+
+To change the password:
+
+```bash
+# Update the password in AWS Secrets Manager
+aws secretsmanager put-secret-value \
+  --secret-id <clusterName>/keycloak \
+  --secret-string "$(
+    aws secretsmanager get-secret-value \
+      --secret-id <clusterName>/keycloak \
+      --query SecretString --output text |
+    python3 -c "import json,sys; d=json.load(sys.stdin); d['sysadmin-password']='NEW_PASSWORD_HERE'; print(json.dumps(d))"
+  )"
+```
+
+Then either wait for the ExternalSecret to sync or force it, and re-import the realm (or update the password via the Keycloak admin console).
+
+!!! note
+    Changing the password in AWS SM updates the Kubernetes Secret, but the Keycloak user's password is only set during the initial `KeycloakRealmImport`. To update it on an existing cluster, change it directly in the Keycloak admin console under **SSO realm → Users → sysadmin → Credentials**.
+
 ## Sync wave order
 
 | Wave | Resource |

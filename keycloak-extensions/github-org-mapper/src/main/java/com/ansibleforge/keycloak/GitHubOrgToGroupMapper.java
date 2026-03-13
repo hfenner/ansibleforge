@@ -18,8 +18,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.jboss.logging.Logger;
+
 public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
 
+    private static final Logger LOG = Logger.getLogger(GitHubOrgToGroupMapper.class);
     public static final String PROVIDER_ID = "github-org-to-group-mapper";
     private static final String CONFIG_ORG = "github.org";
     private static final String CONFIG_TEAM = "github.team";
@@ -103,34 +106,45 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
     private void evaluateAndApply(RealmModel realm, UserModel user,
                                   IdentityProviderMapperModel mapperModel,
                                   BrokeredIdentityContext context) {
+        LOG.infof("GitHub org mapper invoked for user %s", user.getUsername());
+
         String orgName = mapperModel.getConfig().get(CONFIG_ORG);
         String teamSlug = mapperModel.getConfig().get(CONFIG_TEAM);
         String groupPath = mapperModel.getConfig().get(CONFIG_GROUP);
 
         if (orgName == null || orgName.isBlank() || groupPath == null || groupPath.isBlank()) {
+            LOG.warnf("Missing config: org=%s group=%s", orgName, groupPath);
             return;
         }
 
         GroupModel group = findGroup(realm, groupPath);
         if (group == null) {
+            LOG.warnf("Keycloak group '%s' not found in realm", groupPath);
             return;
         }
 
         String accessToken = (String) context.getContextData()
                 .get(AbstractOAuth2IdentityProvider.FEDERATED_ACCESS_TOKEN);
         if (accessToken == null) {
+            LOG.warn("No federated access token available — is storeToken enabled on the IdP?");
+            LOG.debugf("Context data keys: %s", context.getContextData().keySet());
             return;
         }
 
         String username = context.getUsername();
+        LOG.infof("Context username: %s", username);
         // The username may be prefixed with alias (e.g., "github.login"), extract the login
         if (username != null && username.contains(".")) {
             username = username.substring(username.indexOf('.') + 1);
         }
 
         if (username == null || username.isBlank()) {
+            LOG.warn("Username is null or blank after extraction");
             return;
         }
+
+        LOG.infof("Checking membership for GitHub user '%s' in org '%s' team '%s'",
+                username, orgName, teamSlug);
 
         boolean isMember;
         if (teamSlug != null && !teamSlug.isBlank()) {
@@ -139,12 +153,16 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
             isMember = checkOrgMembership(accessToken, orgName, username);
         }
 
+        LOG.infof("Membership check result: %s", isMember);
+
         if (isMember) {
             user.joinGroup(group);
             context.addMapperAssignedGroup(group.getId());
+            LOG.infof("Added user '%s' to group '%s'", user.getUsername(), groupPath);
         } else {
             if (context.hasMapperAssignedGroup(group.getId())) {
                 user.leaveGroup(group);
+                LOG.infof("Removed user '%s' from group '%s'", user.getUsername(), groupPath);
             }
         }
     }
@@ -157,8 +175,9 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
 
     private boolean checkTeamMembership(String accessToken, String orgName, String teamSlug, String username) {
         // GET /orgs/{org}/teams/{team_slug}/memberships/{username} → 200 = member, 404 = not a member
+        String url = GITHUB_API_BASE + "/orgs/" + orgName + "/teams/" + teamSlug + "/memberships/" + username;
         try {
-            URI uri = URI.create(GITHUB_API_BASE + "/orgs/" + orgName + "/teams/" + teamSlug + "/memberships/" + username);
+            URI uri = URI.create(url);
             HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Authorization", "Bearer " + accessToken);
@@ -167,11 +186,13 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
             conn.setReadTimeout(5000);
 
             int responseCode = conn.getResponseCode();
+            LOG.infof("GitHub team membership API %s returned %d", url, responseCode);
             conn.disconnect();
 
             // 200 with state=active means active member
             return responseCode == 200;
         } catch (Exception e) {
+            LOG.errorf(e, "Error checking team membership at %s", url);
             return false;
         }
     }
@@ -187,10 +208,12 @@ public class GitHubOrgToGroupMapper extends AbstractIdentityProviderMapper {
             conn.setReadTimeout(5000);
 
             int responseCode = conn.getResponseCode();
+            LOG.infof("GitHub org membership API %s returned %d", url, responseCode);
             conn.disconnect();
 
             return responseCode == 204;
         } catch (Exception e) {
+            LOG.errorf(e, "Error checking org membership at %s", url);
             return false;
         }
     }

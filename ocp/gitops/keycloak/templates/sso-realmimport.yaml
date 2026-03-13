@@ -72,8 +72,7 @@ spec:
           - openid
           - profile
           - email
-        attributes:
-          pkce.code.challenge.method: S256
+        attributes: {}
     {{- if or .Values.gitlab.broker .Values.github.broker }}
     identityProviders:
       {{- if .Values.gitlab.broker }}

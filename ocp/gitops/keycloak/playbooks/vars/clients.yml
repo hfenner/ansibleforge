@@ -14,9 +14,6 @@ _groups_mapper: &groups_mapper
 _audience_mapper: &audience_mapper_template
   protocol: openid-connect
   protocolMapper: oidc-audience-mapper
-  config:
-    id.token.claim: "true"
-    access.token.claim: "true"
 
 keycloak_clients:
 

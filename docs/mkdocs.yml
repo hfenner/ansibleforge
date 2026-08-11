@@ -55,6 +55,7 @@ nav:
   - Implementation Slices:
       - implementation/index.md
       - Execution Environment BuildConfig: implementation/execution-environment-buildconfig.md
+      - CI Lint on Push: implementation/lint-on-push.md
   - Containers:
       - containers/index.md
       - tools-ansibleforge: containers/tools-ansibleforge.md
